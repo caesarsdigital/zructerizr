@@ -1,0 +1,9 @@
+.bsp/
+.idea/
+.bloop/
+.metals/
+.vscode/
+target/
+node_modules
+
+.DS_Store

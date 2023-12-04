@@ -199,6 +199,21 @@ object ZWorkspace {
     softwareSystem.addContainer(name, description, technology)
   )
 
+  implicit class ZSoftwareSystem(val softwareSystem: SoftwareSystem)
+      extends AnyVal {
+    def addContainer(
+        name: String,
+        description: String,
+        technology: String
+    ): Task[Container] = ZWorkspace.addContainer(
+      softwareSystem,
+      name,
+      description,
+      technology
+    )
+
+  }
+
   def addComponent(
       container: Container,
       name: String,
@@ -207,5 +222,70 @@ object ZWorkspace {
   ): Task[Component] = ZIO.attempt(
     container.addComponent(name, description, technology)
   )
+
+  implicit class ZContainer(val container: Container) extends AnyVal {
+    def addComponent(
+        name: String,
+        description: String,
+        technology: String
+    ): Task[Component] = ZWorkspace.addComponent(
+      container,
+      name,
+      description,
+      technology
+    )
+  }
+
+  sealed trait RelationshipViewable
+  final case class StaticViewable(element: StaticStructureElement)
+      extends RelationshipViewable
+  final case class CustomViewable(element: CustomElement)
+      extends RelationshipViewable
+
+  implicit def staticViewableToStaticStructureElement(
+      viewable: StaticViewable
+  ): StaticStructureElement = viewable.element
+  implicit def staticStructureElementToStaticViewable(
+      element: StaticStructureElement
+  ): StaticViewable = StaticViewable(element)
+  implicit def customViewableToCustomElement(
+      viewable: CustomViewable
+  ): CustomElement = viewable.element
+  implicit def customElementToCustomViewable(
+      element: CustomElement
+  ): CustomViewable = CustomViewable(element)
+
+  def addRelationshipView(
+      view: DynamicView,
+      source: RelationshipViewable,
+      description: String,
+      technology: String,
+      destination: RelationshipViewable
+  ): Task[RelationshipView] =
+    (source, destination) match {
+      case (StaticViewable(source), StaticViewable(destination)) =>
+        ZIO.attempt(view.add(source, description, technology, destination))
+      case (CustomViewable(source), CustomViewable(destination)) =>
+        ZIO.attempt(view.add(source, description, technology, destination))
+      case (StaticViewable(source), CustomViewable(destination)) =>
+        ZIO.attempt(view.add(source, description, technology, destination))
+      case (CustomViewable(source), StaticViewable(destination)) =>
+        ZIO.attempt(view.add(source, description, technology, destination))
+    }
+
+  implicit class ZDynamicView(val view: DynamicView) extends AnyVal {
+    def addRelationshipView(
+        source: RelationshipViewable,
+        description: String,
+        technology: String,
+        destination: RelationshipViewable
+    ): Task[RelationshipView] = ZWorkspace.addRelationshipView(
+      view,
+      source,
+      description,
+      technology,
+      destination
+    )
+  }
 
 }

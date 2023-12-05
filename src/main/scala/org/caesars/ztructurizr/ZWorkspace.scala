@@ -13,7 +13,11 @@ import zio._
 // TODO: https://github.com/structurizr/examples/blob/main/java/src/main/java/com/structurizr/example/MicroservicesExample.java
 // TODO: https://youtu.be/4HEd1EEQLR0?feature=shared&t=2988
 
-final class ZWorkspace private (workspace: Workspace) {
+final class ZWorkspace private (
+    workspace: Workspace,
+    val parallelSequenceSem: Ref[Semaphore]
+) {
+
   def addPerson(
       name: String,
       description: String
@@ -42,7 +46,7 @@ final class ZWorkspace private (workspace: Workspace) {
     * @param interactionStyle
     *   the interaction style (sync vs async)
     * @param tags
-    *   an array of tags
+    *   a sequence of tags
     * @return
     *   the relationship that has just been created and added to the model
     */
@@ -52,7 +56,7 @@ final class ZWorkspace private (workspace: Workspace) {
       description: String = "",
       technology: String = "",
       interactionStyle: Option[InteractionStyle] = None,
-      tags: Array[String] = Array.empty[String]
+      tags: Seq[String] = Seq.empty[String]
   ): Task[Option[Relationship]] = ZIO.attempt(
     Option(
       source.uses(
@@ -60,7 +64,7 @@ final class ZWorkspace private (workspace: Workspace) {
         description,
         technology,
         interactionStyle.orNull,
-        tags
+        tags.toArray
       )
     )
   )
@@ -184,11 +188,32 @@ final class ZWorkspace private (workspace: Workspace) {
 }
 
 object ZWorkspace {
+
+  private def apply(workspace: Workspace): Task[ZWorkspace] = for {
+    sem <- Semaphore.make(1)
+    semRef <- Ref.make(sem)
+  } yield new ZWorkspace(workspace, semRef)
+
+  def apply(name: String, description: String): Task[ZWorkspace] = for {
+    workspace <- ZIO.attempt(new Workspace(name, description))
+    zworkspace <- ZWorkspace(workspace)
+  } yield zworkspace
+
   def apply(workspaceFile: File): Task[ZWorkspace] = for {
     dslParser <- ZIO.succeed(new StructurizrDslParser)
     _ <- ZIO.attempt(dslParser.parse(workspaceFile))
     workspace = dslParser.getWorkspace()
-  } yield new ZWorkspace(workspace)
+    zworkspace <- ZWorkspace(workspace)
+  } yield zworkspace
+
+  private def makeLayer(workspace: Workspace): TaskLayer[ZWorkspace] =
+    ZLayer.fromZIO(ZWorkspace(workspace))
+
+  def makeLayer(name: String, description: String): TaskLayer[ZWorkspace] =
+    ZLayer.fromZIO(ZWorkspace(name, description))
+
+  def makeLayer(workspaceFile: File): TaskLayer[ZWorkspace] =
+    ZLayer.fromZIO(ZWorkspace(workspaceFile))
 
   def addContainer(
       softwareSystem: SoftwareSystem,
@@ -273,6 +298,34 @@ object ZWorkspace {
         ZIO.attempt(view.add(source, description, technology, destination))
     }
 
+  def addParallelSequence(
+      view: DynamicView,
+      relationships: Seq[
+        (RelationshipViewable, RelationshipViewable, String, String)
+      ]
+  ): RIO[ZWorkspace, Unit] = {
+    val semTask = (for {
+      _ <- ZIO.attempt(view.startParallelSequence())
+      _ <- ZIO.foreach(relationships) {
+        case (source, destination, description, technology) =>
+          addRelationshipView(
+            view,
+            source,
+            description,
+            technology,
+            destination
+          )
+      }
+      _ <- ZIO.attempt(view.endParallelSequence())
+    } yield ()).uninterruptible
+
+    for {
+      zworkspace <- ZIO.service[ZWorkspace]
+      sem <- zworkspace.parallelSequenceSem.get
+      _ <- sem.withPermit(semTask)
+    } yield ()
+  }
+
   implicit class ZDynamicView(val view: DynamicView) extends AnyVal {
     def addRelationshipView(
         source: RelationshipViewable,
@@ -286,6 +339,13 @@ object ZWorkspace {
       technology,
       destination
     )
+
+    def addParallelSequence(
+        relationships: Seq[
+          (RelationshipViewable, RelationshipViewable, String, String)
+        ]
+    ): RIO[ZWorkspace, Unit] =
+      ZWorkspace.addParallelSequence(view, relationships)
   }
 
 }

@@ -4,15 +4,17 @@ import com.structurizr.Workspace;
 // import com.structurizr.api.StructurizrClient;
 import com.structurizr.dsl.StructurizrDslParser;
 import com.structurizr.model._;
+import com.structurizr.export.plantuml.StructurizrPlantUMLExporter
 import com.structurizr.view._;
 
 import java.io.File
 
 import zio._
 
-// TODO: https://github.com/structurizr/examples/blob/main/java/src/main/java/com/structurizr/example/MicroservicesExample.java
-// TODO: https://youtu.be/4HEd1EEQLR0?feature=shared&t=2988
-
+/** Some useful but Java-oriented references:
+  * https://github.com/structurizr/examples/blob/main/java/src/main/java/com/structurizr/example/MicroservicesExample.java
+  * https://youtu.be/4HEd1EEQLR0?feature=shared&t=2988
+  */
 final class ZWorkspace private (
     workspace: Workspace,
     val parallelSequenceSem: Ref[Semaphore]
@@ -30,44 +32,6 @@ final class ZWorkspace private (
     ZIO.attempt(workspace.getModel.addSoftwareSystem(name, description))
 
   def views: UIO[ViewSet] = ZIO.succeed(workspace.getViews)
-
-  /** Adds a unidirectional "uses" style relationship between this element and
-    * the specified element.
-    *
-    * @param source
-    *   the source of the relationship
-    * @param destination
-    *   the target of the relationship
-    * @param description
-    *   a description of the relationship (e.g. "uses", "gets data from", "sends
-    *   data to")
-    * @param technology
-    *   the technology details (e.g. JSON/HTTPS)
-    * @param interactionStyle
-    *   the interaction style (sync vs async)
-    * @param tags
-    *   a sequence of tags
-    * @return
-    *   the relationship that has just been created and added to the model
-    */
-  def uses[S <: StaticStructureElement](
-      source: S,
-      destination: StaticStructureElement,
-      description: String = "",
-      technology: String = "",
-      interactionStyle: Option[InteractionStyle] = None,
-      tags: Seq[String] = Seq.empty[String]
-  ): Task[Option[Relationship]] = ZIO.attempt(
-    Option(
-      source.uses(
-        destination,
-        description,
-        technology,
-        interactionStyle.orNull,
-        tags.toArray
-      )
-    )
-  )
 
   /** Creates a container view, where the scope of the view is the specified
     * software system.
@@ -189,25 +153,41 @@ final class ZWorkspace private (
 
 object ZWorkspace {
 
-  private def apply(workspace: Workspace): Task[ZWorkspace] = for {
+  def export(): Task[Unit] = for {
+    exporter <- ZIO.succeed(new StructurizrPlantUMLExporter)
+  } yield ()
+
+  /** Constructs a ZWorkspace from an unmanaged Structurizr workspace.
+    *
+    * @param workspace
+    * @return
+    *   Task[ZWorkspace]
+    */
+  private def unsafeZWorkspace(workspace: Workspace): Task[ZWorkspace] = for {
     sem <- Semaphore.make(1)
     semRef <- Ref.make(sem)
   } yield new ZWorkspace(workspace, semRef)
 
   def apply(name: String, description: String): Task[ZWorkspace] = for {
     workspace <- ZIO.attempt(new Workspace(name, description))
-    zworkspace <- ZWorkspace(workspace)
+    zworkspace <- ZWorkspace.unsafeZWorkspace(workspace)
   } yield zworkspace
 
   def apply(workspaceFile: File): Task[ZWorkspace] = for {
     dslParser <- ZIO.succeed(new StructurizrDslParser)
     _ <- ZIO.attempt(dslParser.parse(workspaceFile))
     workspace = dslParser.getWorkspace()
-    zworkspace <- ZWorkspace(workspace)
+    zworkspace <- ZWorkspace.unsafeZWorkspace(workspace)
   } yield zworkspace
 
-  private def makeLayer(workspace: Workspace): TaskLayer[ZWorkspace] =
-    ZLayer.fromZIO(ZWorkspace(workspace))
+  /** Constructs a ZWorkspace layer from an unmanaged Structurizr workspace.
+    *
+    * @param workspace
+    * @return
+    *   TaskLayer[ZWorkspace]
+    */
+  private def makeLayerUnsafe(workspace: Workspace): TaskLayer[ZWorkspace] =
+    ZLayer.fromZIO(ZWorkspace.unsafeZWorkspace(workspace))
 
   def makeLayer(name: String, description: String): TaskLayer[ZWorkspace] =
     ZLayer.fromZIO(ZWorkspace(name, description))
@@ -215,7 +195,7 @@ object ZWorkspace {
   def makeLayer(workspaceFile: File): TaskLayer[ZWorkspace] =
     ZLayer.fromZIO(ZWorkspace(workspaceFile))
 
-  def addContainer(
+  def addContainerZ(
       softwareSystem: SoftwareSystem,
       name: String,
       description: String,
@@ -226,11 +206,11 @@ object ZWorkspace {
 
   implicit class ZSoftwareSystem(val softwareSystem: SoftwareSystem)
       extends AnyVal {
-    def addContainer(
+    def addContainerZ(
         name: String,
         description: String,
         technology: String
-    ): Task[Container] = ZWorkspace.addContainer(
+    ): Task[Container] = ZWorkspace.addContainerZ(
       softwareSystem,
       name,
       description,
@@ -239,7 +219,7 @@ object ZWorkspace {
 
   }
 
-  def addComponent(
+  def addComponentZ(
       container: Container,
       name: String,
       description: String,
@@ -249,16 +229,27 @@ object ZWorkspace {
   )
 
   implicit class ZContainer(val container: Container) extends AnyVal {
-    def addComponent(
+    def addComponentZ(
         name: String,
         description: String,
         technology: String
-    ): Task[Component] = ZWorkspace.addComponent(
+    ): Task[Component] = ZWorkspace.addComponentZ(
       container,
       name,
       description,
       technology
     )
+  }
+
+  def addTagz(
+      element: Element,
+      tags: String*
+  ): Task[Unit] = ZIO.attempt(element.addTags(tags: _*))
+
+  implicit class ZElement(val element: Element) extends AnyVal {
+    def addTagz(
+        tags: String*
+    ): Task[Unit] = ZWorkspace.addTagz(element, tags: _*)
   }
 
   sealed trait RelationshipViewable
@@ -348,4 +339,76 @@ object ZWorkspace {
       ZWorkspace.addParallelSequence(view, relationships)
   }
 
+  /** Adds a unidirectional "uses" style relationship between the source element
+    * and the specified destination element.
+    *
+    * @param source
+    *   the source of the relationship
+    * @param destination
+    *   the target of the relationship
+    * @param description
+    *   a description of the relationship (e.g. "uses", "gets data from", "sends
+    *   data to")
+    * @param technology
+    *   the technology details (e.g. JSON/HTTPS)
+    * @param interactionStyle
+    *   the interaction style (sync vs async)
+    * @param tags
+    *   a sequence of tags
+    * @return
+    *   the relationship that has just been created and added to the model
+    */
+  def uzez[S <: StaticStructureElement](
+      source: S,
+      destination: StaticStructureElement,
+      description: String = "",
+      technology: String = "",
+      interactionStyle: Option[InteractionStyle] = None,
+      tags: Seq[String] = Seq.empty[String]
+  ): Task[Option[Relationship]] = ZIO.attempt(
+    Option(
+      source.uses(
+        destination,
+        description,
+        technology,
+        interactionStyle.orNull,
+        tags.toArray
+      )
+    )
+  )
+
+  /** Adds a unidirectional "uses" style relationship between this element and
+    * the specified element.
+    *
+    * @param destination
+    *   the target of the relationship
+    * @param description
+    *   a description of the relationship (e.g. "uses", "gets data from", "sends
+    *   data to")
+    * @param technology
+    *   the technology details (e.g. JSON/HTTPS)
+    * @param interactionStyle
+    *   the interaction style (sync vs async)
+    * @param tags
+    *   a sequence of tags
+    * @return
+    *   the relationship that has just been created and added to the model
+    */
+  implicit class ZStaticStructureElement(val element: StaticStructureElement)
+      extends AnyVal {
+    def uzez(
+        destination: StaticStructureElement,
+        description: String = "",
+        technology: String = "",
+        interactionStyle: Option[InteractionStyle] = None,
+        tags: Seq[String] = Seq.empty[String]
+    ): Task[Option[Relationship]] = ZWorkspace.uzez(
+      element,
+      destination,
+      description,
+      technology,
+      interactionStyle,
+      tags
+    )
+  }
 }

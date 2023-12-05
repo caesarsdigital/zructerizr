@@ -8,11 +8,12 @@ object Dependencies {
     val zio = "2.0.19"
   }
 
-  val zio =  "dev.zio" %% "zio" % Versions.zio
+  val zio = "dev.zio" %% "zio" % Versions.zio
 
   val structurizrDependencies = Seq(
-    "com.structurizr" % "structurizr-client" % "1.20.1",
+    // "com.structurizr" % "structurizr-client" % "1.20.1",
     "com.structurizr" % "structurizr-import" % "1.2.1",
+    "com.structurizr" % "structurizr-export" % "1.18.0",
     "com.structurizr" % "structurizr-dsl" % "1.34.0"
   )
 }

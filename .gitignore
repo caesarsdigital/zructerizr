@@ -6,4 +6,7 @@
 target/
 node_modules
 
+# We may want to save this later for "golden tests"
+figures/*
+
 .DS_Store

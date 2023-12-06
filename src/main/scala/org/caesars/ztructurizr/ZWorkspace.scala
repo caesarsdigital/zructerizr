@@ -13,6 +13,11 @@ import scala.jdk.CollectionConverters.CollectionHasAsScala
 import zio._
 import com.structurizr.export.Diagram
 import com.structurizr.export.plantuml.PlantUMLDiagram
+import java.io.IOException
+import java.nio.charset.StandardCharsets
+import java.nio.file.Paths
+import java.nio.file.Files
+import java.nio.file.Path
 
 /** Some useful but Java-oriented references:
   * https://github.com/structurizr/examples/blob/main/java/src/main/java/com/structurizr/example/MicroservicesExample.java
@@ -272,17 +277,45 @@ object ZWorkspace {
     case _ => ZIO.succeed(None)
   }
 
-  def serialize(
-      diagram: Diagram
+  def saveToFile(
+      diagram: Diagram,
+      baseFileName: Path
   ): Task[Unit] = for {
     defn <- diagramDefinition(diagram)
+    fileExt = Option(diagram.getFileExtension).getOrElse("txt")
     _ <- defn match {
-      case Some(defn) =>
-        ZIO.attempt(println(defn))
+      case Some(defn) => writeFile(s"${baseFileName}.${fileExt}", defn)
       case None =>
-        ZIO.attempt(println("No definition"))
+        ZIO.fail(
+          new Exception(
+            s"No definition when writing to $baseFileName.$fileExt"
+          )
+        )
     }
   } yield ()
+
+  def saveToFile(
+      diagram: Diagram,
+      baseFileName: String
+  ): Task[Unit] = for {
+    defn <- diagramDefinition(diagram)
+    fileExt = Option(diagram.getFileExtension).getOrElse("txt")
+    _ <- defn match {
+      case Some(defn) => writeFile(s"${baseFileName}.${fileExt}", defn)
+      case None =>
+        ZIO.fail(
+          new Exception(
+            s"No definition when writing to $baseFileName.$fileExt"
+          )
+        )
+    }
+  } yield ()
+
+  implicit class ZDiagram(val diagram: Diagram) extends AnyVal {
+    def definition: Task[Option[String]] = ZWorkspace.diagramDefinition(diagram)
+    def saveToFile(baseFileName: String): Task[Unit] =
+      ZWorkspace.saveToFile(diagram, baseFileName)
+  }
 
   //     ext <- ZIO.attempt(diagram.getFileExtension())
 
@@ -547,4 +580,22 @@ object ZWorkspace {
       tags
     )
   }
+
+  private def writeFile(
+      path: Path,
+      content: String
+  ): IO[IOException, Path] = {
+    ZIO
+      .attempt(Files.write(path, content.getBytes(StandardCharsets.UTF_8)))
+      .refineToOrDie[IOException]
+  }
+
+  private def writeFile(
+      pathIn: String,
+      content: String
+  ): IO[IOException, Path] = for {
+    path <- ZIO.attempt(Paths.get(pathIn)).refineToOrDie[IOException]
+    pathOut <- writeFile(path, content)
+  } yield pathOut
+
 }

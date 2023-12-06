@@ -196,7 +196,13 @@ object MicroservicesExampleSpec extends ZIOSpecDefault {
       )
     )
     diagrams <- ZWorkspace.exportWorkspace(PlantUML)
-    _ <- ZIO.foreach(diagrams)(ZWorkspace.serialize)
+    diagramsWithPaths = diagrams.zipWithIndex.map { case (diagram, index) =>
+      val path = s"figures/microservices-example-$index"
+      (diagram, path)
+    }
+    _ <- ZIO.foreach(diagramsWithPaths) { case (diagram, path) =>
+      diagram.saveToFile(path)
+    }
 
   } yield ()
 

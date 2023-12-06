@@ -9,6 +9,8 @@ object Dependencies {
   }
 
   val zio = "dev.zio" %% "zio" % Versions.zio
+  val zioTest = "dev.zio" %% "zio-test" % Versions.zio % Test
+  val zioTestSbt = "dev.zio" %% "zio-test-sbt" % Versions.zio % Test
 
   val structurizrDependencies = Seq(
     // "com.structurizr" % "structurizr-client" % "1.20.1",

@@ -8,17 +8,39 @@ import com.structurizr.export.plantuml.StructurizrPlantUMLExporter
 import com.structurizr.view._;
 
 import java.io.File
+import scala.jdk.CollectionConverters.CollectionHasAsScala
 
 import zio._
+import com.structurizr.export.Diagram
+import com.structurizr.export.plantuml.PlantUMLDiagram
 
 /** Some useful but Java-oriented references:
   * https://github.com/structurizr/examples/blob/main/java/src/main/java/com/structurizr/example/MicroservicesExample.java
   * https://youtu.be/4HEd1EEQLR0?feature=shared&t=2988
   */
 final class ZWorkspace private (
-    workspace: Workspace,
-    val parallelSequenceSem: Ref[Semaphore]
+    private val workspace: Workspace,
+    val parallelSequenceSem: Ref[Semaphore],
+    val exporters: Ref[Exporters]
 ) {
+
+  def getExporter(
+      exporterType: ExporterType
+  ): Task[StructurizrPlantUMLExporter] = for {
+    exps <- exporters.get
+    exporter <- exporterType match {
+      case PlantUML =>
+        exps.plantUmlExporter match {
+          case Some(plantUmlExporter) =>
+            ZIO.succeed(plantUmlExporter)
+          case None =>
+            for {
+              umlExp <- ZIO.attempt(new StructurizrPlantUMLExporter)
+              _ <- exporters.update(_.copy(plantUmlExporter = Some(umlExp)))
+            } yield umlExp
+        }
+    }
+  } yield exporter
 
   def addPerson(
       name: String,
@@ -153,9 +175,116 @@ final class ZWorkspace private (
 
 object ZWorkspace {
 
-  def export(): Task[Unit] = for {
-    exporter <- ZIO.succeed(new StructurizrPlantUMLExporter)
+  sealed trait Exportable
+  final case class DynamicViewExportable(dynamicView: DynamicView)
+      extends Exportable
+  final case class ComponentExportable(componentView: ComponentView)
+      extends Exportable
+  final case class ContainerExportable(containerView: ContainerView)
+      extends Exportable
+  final case class CustomExportable(customView: CustomView) extends Exportable
+  final case class DeploymentExportable(deploymentView: DeploymentView)
+      extends Exportable
+  final case class SystemContextExportable(systemContextView: SystemContextView)
+      extends Exportable
+  final case class SystmeLandscapeExportable(
+      systemLandscapeView: SystemLandscapeView
+  ) extends Exportable
+
+  implicit def containerToExportable(
+      containerView: ContainerView
+  ): ContainerExportable = ContainerExportable(containerView)
+  implicit def exportableToContainer(
+      exportable: ContainerExportable
+  ): ContainerView = exportable.containerView
+
+  def export(
+      exporterType: ExporterType,
+      exportable: Exportable
+  ): RIO[ZWorkspace, Diagram] = for {
+    zworkspace <- ZIO.service[ZWorkspace]
+    exporter <- zworkspace.getExporter(exporterType)
+    diagram <- exportable match {
+      case DynamicViewExportable(dynamicView) =>
+        ZIO.attempt(exporter.export(dynamicView))
+      case ComponentExportable(componentView) =>
+        ZIO.attempt(exporter.export(componentView))
+      case ContainerExportable(containerView) =>
+        ZIO.attempt(exporter.export(containerView))
+      case CustomExportable(customView) =>
+        ZIO.attempt(exporter.export(customView))
+      case DeploymentExportable(deploymentView) =>
+        ZIO.attempt(exporter.export(deploymentView))
+      case SystemContextExportable(systemContextView) =>
+        ZIO.attempt(exporter.export(systemContextView))
+      case SystmeLandscapeExportable(systemLandscapeView) =>
+        ZIO.attempt(exporter.export(systemLandscapeView))
+    }
+  } yield diagram
+
+  /** @param exportable
+    * @param exporterType
+    * @param animationStep
+    *   Note that animationStep is ignored for CustomView, SystemContextView,
+    *   and SystemLandscapeView.
+    * @return
+    */
+  def export(
+      exporterType: ExporterType,
+      exportable: Exportable,
+      animationStep: Int
+  ): RIO[ZWorkspace, Diagram] = for {
+    zworkspace <- ZIO.service[ZWorkspace]
+    exporter <- zworkspace.getExporter(exporterType)
+    diagram <- exportable match {
+      case DynamicViewExportable(dynamicView) =>
+        ZIO.attempt(exporter.export(dynamicView, animationStep.toString))
+      case ComponentExportable(componentView) =>
+        ZIO.attempt(exporter.export(componentView, animationStep))
+      case ContainerExportable(containerView) =>
+        ZIO.attempt(exporter.export(containerView, animationStep))
+      case CustomExportable(customView) =>
+        ZIO.attempt(exporter.export(customView /*, animationStep */ ))
+      case DeploymentExportable(deploymentView) =>
+        ZIO.attempt(exporter.export(deploymentView, animationStep))
+      case SystemContextExportable(systemContextView) =>
+        ZIO.attempt(exporter.export(systemContextView /*, animationStep */ ))
+      case SystmeLandscapeExportable(systemLandscapeView) =>
+        ZIO.attempt(exporter.export(systemLandscapeView /*, animationStep */ ))
+    }
+  } yield diagram
+
+  def exportWorkspace(
+      exporterType: ExporterType
+  ): RIO[ZWorkspace, List[Diagram]] = for {
+    zworkspace <- ZIO.service[ZWorkspace]
+    exporter <- zworkspace.getExporter(exporterType)
+    diagrams <- ZIO
+      .attempt(exporter.export(zworkspace.workspace))
+      .map(CollectionHasAsScala(_).asScala.toList)
+  } yield diagrams
+
+  def diagramDefinition(
+      diagram: Diagram
+  ): Task[Option[String]] = diagram match {
+    case plantUmlDiagram: PlantUMLDiagram =>
+      ZIO.attempt(plantUmlDiagram.getDefinition).map(Option(_))
+    case _ => ZIO.succeed(None)
+  }
+
+  def serialize(
+      diagram: Diagram
+  ): Task[Unit] = for {
+    defn <- diagramDefinition(diagram)
+    _ <- defn match {
+      case Some(defn) =>
+        ZIO.attempt(println(defn))
+      case None =>
+        ZIO.attempt(println("No definition"))
+    }
   } yield ()
+
+  //     ext <- ZIO.attempt(diagram.getFileExtension())
 
   /** Constructs a ZWorkspace from an unmanaged Structurizr workspace.
     *
@@ -166,7 +295,8 @@ object ZWorkspace {
   private def unsafeZWorkspace(workspace: Workspace): Task[ZWorkspace] = for {
     sem <- Semaphore.make(1)
     semRef <- Ref.make(sem)
-  } yield new ZWorkspace(workspace, semRef)
+    exportersRef <- Ref.make(Exporters.empty)
+  } yield new ZWorkspace(workspace, semRef, exportersRef)
 
   def apply(name: String, description: String): Task[ZWorkspace] = for {
     workspace <- ZIO.attempt(new Workspace(name, description))

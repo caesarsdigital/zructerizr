@@ -8,6 +8,8 @@ with the Structurizr DSL in ZIO applications.
 
 See the tests for examples of how to use the library.
 
+You can run the examples from sbt with `test:runMain org.caesars.ztructurizr.ExampleRunner`.
+
 ## Related Projects
 
 - [structurizr](https://github.com/structurizr): Java libraries (which we build on) for working with c4 models using the Structurizr DSL

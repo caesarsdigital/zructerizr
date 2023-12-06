@@ -2,6 +2,13 @@ package org.caesars.ztructurizr
 
 import org.caesars.ztructurizr.ZWorkspace._
 
+import com.structurizr.model.InteractionStyle
+import com.structurizr.model.Tags
+import com.structurizr.view.Styles
+import com.structurizr.view.ViewSet
+import com.structurizr.view.ContainerView
+import com.structurizr.view.DynamicView
+
 import zio._
 
 /*
@@ -112,11 +119,13 @@ object MicroservicesExample {
   val MESSAGE_BUS_TAG = "Message Bus"
   val DATASTORE_TAG = "Database"
 
-  val microservicesExample: Task[Unit] = for {
-    workspace <- ZWorkspace(
-      "Microservices example",
-      "An example of a microservices architecture, which includes asynchronous and parallel behaviour."
-    )
+  val workspaceLayer = ZWorkspace.makeLayer(
+    "Microservices example",
+    "An example of a microservices architecture, which includes asynchronous and parallel behaviour."
+  )
+
+  val microservicesExample: RIO[ZWorkspace, Unit] = for {
+    workspace <- ZIO.service[ZWorkspace]
     mySoftwareSystem <- workspace.addSoftwareSystem(
       "Customer Information System",
       "Stores information"
@@ -170,6 +179,97 @@ object MicroservicesExample {
     )
     _ <- messageBus.addTagz(MESSAGE_BUS_TAG)
     _ <- customer.uzez(customerApplication, "Uses")
+    _ <- customerApplication.uzez(
+      customerService,
+      "Updates customer information using",
+      "JSON/HTTPS",
+      Some(InteractionStyle.Synchronous)
+    )
+    _ <- customerService.uzez(
+      messageBus,
+      "Sends customer update events to",
+      "",
+      Some(InteractionStyle.Asynchronous)
+    )
+    _ <- customerService.uzez(
+      customerDatabase,
+      "Stores data in",
+      "JDBC",
+      Some(InteractionStyle.Synchronous)
+    )
+    _ <- customerService.uzez(
+      customerApplication,
+      "Sends events to",
+      "WebSocket",
+      Some(InteractionStyle.Asynchronous)
+    )
+    _ <- messageBus.uzez(
+      reportingService,
+      "Sends customer update events to",
+      "",
+      Some(InteractionStyle.Asynchronous)
+    )
+    _ <- messageBus.uzez(
+      auditService,
+      "Sends customer update events to",
+      "",
+      Some(InteractionStyle.Asynchronous)
+    )
+    _ <- reportingService.uzez(
+      reportingDatabase,
+      "Stores data in",
+      "",
+      Some(InteractionStyle.Synchronous)
+    )
+    _ <- auditService.uzez(
+      auditStore,
+      "Stores events in",
+      "",
+      Some(InteractionStyle.Synchronous)
+    )
+    containerView <- workspace.createContainerView(
+      mySoftwareSystem,
+      "Containers",
+      ""
+    )
+    _ <- containerView.viewFunction(_.addAllElements)
+    dynamicView <- workspace.createDynamicViewOfSoftwareSystem(
+      mySoftwareSystem,
+      "CustomerUpdateEvent",
+      "This diagram shows what happens when a customer updates their details."
+    )
+    _ <- dynamicView.addRelationshipView(customer, "", "", customerApplication)
+    _ <- dynamicView.addRelationshipView(
+      customerApplication,
+      "",
+      "",
+      customerService
+    )
+    _ <- dynamicView.addRelationshipView(
+      customerService,
+      "",
+      "",
+      customerDatabase
+    )
+    _ <- dynamicView.addRelationshipView(customerService, "", "", messageBus)
+    _ <- dynamicView.addParallelSequence(
+      Seq(
+        (messageBus, reportingService, "", ""),
+        (reportingService, reportingDatabase, "", "")
+      )
+    )
+    _ <- dynamicView.addParallelSequence(
+      Seq(
+        (messageBus, auditService, "", ""),
+        (auditService, auditStore, "", "")
+      )
+    )
+    _ <- dynamicView.addParallelSequence(
+      Seq(
+        (customerService, customerApplication, "Confirms update to", "")
+      )
+    )
+
   } yield ()
 
 }

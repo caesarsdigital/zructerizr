@@ -241,6 +241,12 @@ object ZWorkspace {
     )
   }
 
+  implicit class ZContainerView(val view: ContainerView) extends AnyVal {
+    def viewFunction[T](
+        fn: ContainerView => T
+    ): Task[T] = ZIO.attempt(fn(view))
+  }
+
   def addTagz(
       element: Element,
       tags: String*

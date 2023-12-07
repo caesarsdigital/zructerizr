@@ -14,6 +14,7 @@ import zio.test._
 import zio.test.Assertion._
 
 /*
+        // TODO:
 
         Styles styles = views.getConfiguration().getStyles();
         styles.addElementStyle(Tags.ELEMENT).color("#000000");
@@ -47,152 +48,167 @@ object MicroservicesExampleSpec extends ZIOSpecDefault {
 
   val workspaceLayer = ZWorkspace.makeLayer(
     "Microservices example",
-    "An example of a microservices architecture, which includes asynchronous and parallel behaviour."
+    "An example of a microservices architecture, which includes asynchronous and parallel behaviour.".description
   )
 
   val microservicesExample: RIO[ZWorkspace, Unit] = for {
     workspace <- ZIO.service[ZWorkspace]
     mySoftwareSystem <- workspace.addSoftwareSystem(
       "Customer Information System",
-      "Stores information"
+      "Stores information".description
     )
-    customer <- workspace.addPerson("Customer", "A customer")
+    customer <- workspace.addPerson("Customer", "A customer".description)
     customerApplication <- mySoftwareSystem.addContainerZ(
       "Customer Application",
-      "Allows customers to manage their profile.",
-      "PureScript Concur"
+      "Allows customers to manage their profile.".description,
+      "PureScript Concur".technology
     )
     customerService <- mySoftwareSystem.addContainerZ(
       "Customer Service",
-      "The point of access for customer information.",
-      "Scala and ZIO"
+      "The point of access for customer information.".description,
+      "Scala and ZIO".technology
     )
     _ <- customerService.addTagz(MICROSERVICE_TAG)
     customerDatabase <- mySoftwareSystem.addContainerZ(
       "Customer Database",
-      "Stores customer information.",
-      "PostgreSQL"
+      "Stores customer information.".description,
+      "PostgreSQL".technology
     )
     _ <- customerDatabase.addTagz(DATASTORE_TAG)
     reportingService <- mySoftwareSystem.addContainerZ(
       "Reporting Service",
-      "Creates normalised data for reporting purposes.",
-      "Scala and ZIO"
+      "Creates normalised data for reporting purposes.".description,
+      "Scala and ZIO".technology
     )
     _ <- reportingService.addTagz(MICROSERVICE_TAG)
     reportingDatabase <- mySoftwareSystem.addContainerZ(
       "Reporting Database",
-      "Stores a normalised version of all business data for ad hoc reporting purposes.",
-      "PostgreSQL"
+      "Stores a normalised version of all business data for ad hoc reporting purposes.".description,
+      "PostgreSQL".technology
     )
     _ <- reportingDatabase.addTagz(DATASTORE_TAG)
     auditService <- mySoftwareSystem.addContainerZ(
       "Audit Service",
-      "Provides organisation-wide auditing facilities.",
-      "Scala and ZIO"
+      "Provides organisation-wide auditing facilities.".description,
+      "Scala and ZIO".technology
     )
     _ <- auditService.addTagz(MICROSERVICE_TAG)
     auditStore <- mySoftwareSystem.addContainerZ(
       "Audit Store",
-      "Stores information about events that have happened.",
-      "PostgreSQL"
+      "Stores information about events that have happened.".description,
+      "PostgreSQL".technology
     )
     _ <- auditStore.addTagz(DATASTORE_TAG)
     messageBus <- mySoftwareSystem.addContainerZ(
       "Message Bus",
-      "Transport for business events.",
-      "Kafka"
+      "Transport for business events.".description,
+      "Kafka".technology
     )
     _ <- messageBus.addTagz(MESSAGE_BUS_TAG)
-    _ <- customer.uzez(customerApplication, "Uses")
+    _ <- customer.uzez(customerApplication, "Uses".description)
     _ <- customerApplication.uzez(
       customerService,
-      "Updates customer information using",
-      "JSON/HTTPS",
+      "Updates customer information using".description,
+      "JSON/HTTPS".technology,
       Some(InteractionStyle.Synchronous)
     )
     _ <- customerService.uzez(
       messageBus,
-      "Sends customer update events to",
-      "",
+      "Sends customer update events to".description,
+      "".technology,
       Some(InteractionStyle.Asynchronous)
     )
     _ <- customerService.uzez(
       customerDatabase,
-      "Stores data in",
-      "JDBC",
+      "Stores data in".description,
+      "JDBC".technology,
       Some(InteractionStyle.Synchronous)
     )
     _ <- customerService.uzez(
       customerApplication,
-      "Sends events to",
-      "WebSocket",
+      "Sends events to".description,
+      "WebSocket".technology,
       Some(InteractionStyle.Asynchronous)
     )
     _ <- messageBus.uzez(
       reportingService,
-      "Sends customer update events to",
-      "",
+      "Sends customer update events to".description,
+      "".technology,
       Some(InteractionStyle.Asynchronous)
     )
     _ <- messageBus.uzez(
       auditService,
-      "Sends customer update events to",
-      "",
+      "Sends customer update events to".description,
+      "".technology,
       Some(InteractionStyle.Asynchronous)
     )
     _ <- reportingService.uzez(
       reportingDatabase,
-      "Stores data in",
-      "",
+      "Stores data in".description,
+      "".technology,
       Some(InteractionStyle.Synchronous)
     )
     _ <- auditService.uzez(
       auditStore,
-      "Stores events in",
-      "",
+      "Stores events in".description,
+      "".technology,
       Some(InteractionStyle.Synchronous)
     )
     containerView <- workspace.createContainerView(
       mySoftwareSystem,
-      "Containers",
-      ""
+      "Containers".technology,
+      "".description
     )
     _ <- containerView.viewFunction(_.addAllElements)
     dynamicView <- workspace.createDynamicViewOfSoftwareSystem(
       mySoftwareSystem,
       "CustomerUpdateEvent",
-      "This diagram shows what happens when a customer updates their details."
+      "This diagram shows what happens when a customer updates their details.".description
     )
-    _ <- dynamicView.addRelationshipView(customer, "", "", customerApplication)
+    _ <- dynamicView.addRelationshipView(
+      customer,
+      "".description,
+      "".technology,
+      customerApplication
+    )
     _ <- dynamicView.addRelationshipView(
       customerApplication,
-      "",
-      "",
+      "".description,
+      "".technology,
       customerService
     )
     _ <- dynamicView.addRelationshipView(
       customerService,
-      "",
-      "",
+      "".description,
+      "".technology,
       customerDatabase
     )
-    _ <- dynamicView.addRelationshipView(customerService, "", "", messageBus)
+    _ <- dynamicView.addRelationshipView(
+      customerService,
+      "".description,
+      "".technology,
+      messageBus
+    )
     _ <- dynamicView.addParallelSequence(
       Seq(
-        (messageBus, reportingService, "", ""),
-        (reportingService, reportingDatabase, "", "")
+        (messageBus, reportingService, "".description, "".technology),
+        (reportingService, reportingDatabase, "".description, "".technology)
       )
     )
     _ <- dynamicView.addParallelSequence(
       Seq(
-        (messageBus, auditService, "", ""),
-        (auditService, auditStore, "", "")
+        (messageBus, auditService, "".description, "".technology),
+        (auditService, auditStore, "".description, "".technology)
       )
     )
     _ <- dynamicView.addParallelSequence(
       Seq(
-        (customerService, customerApplication, "Confirms update to", "")
+        (
+          customerService,
+          customerApplication,
+          "Confirms update to".description,
+          "".technology
+        )
       )
     )
     diagrams <- ZWorkspace.exportWorkspace(PlantUML)

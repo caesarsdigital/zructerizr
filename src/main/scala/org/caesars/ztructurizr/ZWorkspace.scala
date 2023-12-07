@@ -49,12 +49,12 @@ final class ZWorkspace private (
 
   def addPerson(
       name: String,
-      description: String
+      description: Description
   ): Task[Person] = ZIO.attempt(workspace.getModel.addPerson(name, description))
 
   def addSoftwareSystem(
       name: String,
-      description: String
+      description: Description
   ): Task[SoftwareSystem] =
     ZIO.attempt(workspace.getModel.addSoftwareSystem(name, description))
 
@@ -77,7 +77,7 @@ final class ZWorkspace private (
   def createContainerView(
       softwareSystem: SoftwareSystem,
       key: String,
-      description: String
+      description: Description
   ): Task[ContainerView] = ZIO.attempt(
     workspace.getViews.createContainerView(
       softwareSystem,
@@ -103,7 +103,7 @@ final class ZWorkspace private (
   def createComponentView(
       container: Container,
       key: String,
-      description: String = ""
+      description: Description = Description("")
   ): Task[ComponentView] = ZIO.attempt(
     workspace.getViews.createComponentView(container, key, description)
   )
@@ -121,7 +121,7 @@ final class ZWorkspace private (
     */
   def createDynamicView(
       key: String,
-      description: String = ""
+      description: Description = Description("")
   ): Task[DynamicView] =
     ZIO.attempt(workspace.getViews.createDynamicView(key, description))
 
@@ -145,7 +145,7 @@ final class ZWorkspace private (
   def createDynamicViewOfSoftwareSystem(
       softwareSystem: SoftwareSystem,
       key: String,
-      description: String = ""
+      description: Description = Description("")
   ): Task[DynamicView] = ZIO.attempt(
     workspace.getViews.createDynamicView(softwareSystem, key, description)
   )
@@ -171,7 +171,7 @@ final class ZWorkspace private (
   def createDynamicViewOfContainer(
       container: Container,
       key: String,
-      description: String = ""
+      description: Description = Description("")
   ): Task[DynamicView] = ZIO.attempt(
     workspace.getViews.createDynamicView(container, key, description)
   )
@@ -331,7 +331,7 @@ object ZWorkspace {
     exportersRef <- Ref.make(Exporters.empty)
   } yield new ZWorkspace(workspace, semRef, exportersRef)
 
-  def apply(name: String, description: String): Task[ZWorkspace] = for {
+  def apply(name: String, description: Description): Task[ZWorkspace] = for {
     workspace <- ZIO.attempt(new Workspace(name, description))
     zworkspace <- ZWorkspace.unsafeZWorkspace(workspace)
   } yield zworkspace
@@ -352,7 +352,7 @@ object ZWorkspace {
   private def makeLayerUnsafe(workspace: Workspace): TaskLayer[ZWorkspace] =
     ZLayer.fromZIO(ZWorkspace.unsafeZWorkspace(workspace))
 
-  def makeLayer(name: String, description: String): TaskLayer[ZWorkspace] =
+  def makeLayer(name: String, description: Description): TaskLayer[ZWorkspace] =
     ZLayer.fromZIO(ZWorkspace(name, description))
 
   def makeLayer(workspaceFile: File): TaskLayer[ZWorkspace] =
@@ -361,8 +361,8 @@ object ZWorkspace {
   def addContainerZ(
       softwareSystem: SoftwareSystem,
       name: String,
-      description: String,
-      technology: String
+      description: Description,
+      technology: Technology
   ): Task[Container] = ZIO.attempt(
     softwareSystem.addContainer(name, description, technology)
   )
@@ -371,8 +371,8 @@ object ZWorkspace {
       extends AnyVal {
     def addContainerZ(
         name: String,
-        description: String,
-        technology: String
+        description: Description,
+        technology: Technology
     ): Task[Container] = ZWorkspace.addContainerZ(
       softwareSystem,
       name,
@@ -385,8 +385,8 @@ object ZWorkspace {
   def addComponentZ(
       container: Container,
       name: String,
-      description: String,
-      technology: String
+      description: Description,
+      technology: Technology
   ): Task[Component] = ZIO.attempt(
     container.addComponent(name, description, technology)
   )
@@ -394,8 +394,8 @@ object ZWorkspace {
   implicit class ZContainer(val container: Container) extends AnyVal {
     def addComponentZ(
         name: String,
-        description: String,
-        technology: String
+        description: Description,
+        technology: Technology
     ): Task[Component] = ZWorkspace.addComponentZ(
       container,
       name,
@@ -443,8 +443,8 @@ object ZWorkspace {
   def addRelationshipView(
       view: DynamicView,
       source: RelationshipViewable,
-      description: String,
-      technology: String,
+      description: Description,
+      technology: Technology,
       destination: RelationshipViewable
   ): Task[RelationshipView] =
     (source, destination) match {
@@ -461,7 +461,7 @@ object ZWorkspace {
   def addParallelSequence(
       view: DynamicView,
       relationships: Seq[
-        (RelationshipViewable, RelationshipViewable, String, String)
+        (RelationshipViewable, RelationshipViewable, Description, Technology)
       ]
   ): RIO[ZWorkspace, Unit] = {
     val semTask = (for {
@@ -489,8 +489,8 @@ object ZWorkspace {
   implicit class ZDynamicView(val view: DynamicView) extends AnyVal {
     def addRelationshipView(
         source: RelationshipViewable,
-        description: String,
-        technology: String,
+        description: Description,
+        technology: Technology,
         destination: RelationshipViewable
     ): Task[RelationshipView] = ZWorkspace.addRelationshipView(
       view,
@@ -502,7 +502,7 @@ object ZWorkspace {
 
     def addParallelSequence(
         relationships: Seq[
-          (RelationshipViewable, RelationshipViewable, String, String)
+          (RelationshipViewable, RelationshipViewable, Description, Technology)
         ]
     ): RIO[ZWorkspace, Unit] =
       ZWorkspace.addParallelSequence(view, relationships)
@@ -530,8 +530,8 @@ object ZWorkspace {
   def uzez[S <: StaticStructureElement](
       source: S,
       destination: StaticStructureElement,
-      description: String = "",
-      technology: String = "",
+      description: Description = Description(""),
+      technology: Technology = Technology(""),
       interactionStyle: Option[InteractionStyle] = None,
       tags: Seq[String] = Seq.empty[String]
   ): Task[Option[Relationship]] = ZIO.attempt(
@@ -567,8 +567,8 @@ object ZWorkspace {
       extends AnyVal {
     def uzez(
         destination: StaticStructureElement,
-        description: String = "",
-        technology: String = "",
+        description: Description = Description(""),
+        technology: Technology = Technology(""),
         interactionStyle: Option[InteractionStyle] = None,
         tags: Seq[String] = Seq.empty[String]
     ): Task[Option[Relationship]] = ZWorkspace.uzez(
@@ -597,5 +597,13 @@ object ZWorkspace {
     path <- ZIO.attempt(Paths.get(pathIn)).refineToOrDie[IOException]
     pathOut <- writeFile(path, content)
   } yield pathOut
+
+  implicit class DescriptionStringOps(description: String) {
+    def description: Description = Description(description)
+  }
+
+  implicit class TechnologyStringOps(technology: String) {
+    def technology: Technology = Technology(technology)
+  }
 
 }

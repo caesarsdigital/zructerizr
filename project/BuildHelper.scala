@@ -207,15 +207,15 @@ object BuildHelper {
       baseDirectory: File
   )(versions: String*) = for {
     platform <- List("shared", platform)
-    version <- "scala" :: versions.toList.map("scala-" + _)
+    version  <- "scala" :: versions.toList.map("scala-" + _)
     result =
       baseDirectory.getParentFile / platform.toLowerCase / "src" / conf / version
     if result.exists
   } yield result
 
   def stdSettings(prjName: String) = Seq(
-    name := s"$prjName",
-    crossScalaVersions := Seq(Versions.scala2),
+    name                     := s"$prjName",
+    crossScalaVersions       := Seq(Versions.scala2),
     ThisBuild / scalaVersion := Versions.scala2,
     scalacOptions := stdOptions ++ extraOptions(
       scalaVersion.value,
@@ -243,7 +243,7 @@ object BuildHelper {
     ),
     ThisBuild / scalafixDependencies ++= List(
       "com.github.liancheng" %% "organize-imports" % "0.5.0",
-      "com.github.vovapolu" %% "scaluzzi" % "0.1.18"
+      "com.github.vovapolu"  %% "scaluzzi"         % "0.1.18"
     ),
     Test / parallelExecution := true,
     incOptions ~= (_.withLogRecompileOnMacro(false)),
@@ -278,7 +278,7 @@ object BuildHelper {
       if (scalaVersion.value == Versions.scala3) Seq()
       else
         Seq(
-          "org.scala-lang" % "scala-reflect" % scalaVersion.value % "provided",
+          "org.scala-lang" % "scala-reflect"  % scalaVersion.value % "provided",
           "org.scala-lang" % "scala-compiler" % scalaVersion.value % "provided"
         )
     }
@@ -312,15 +312,15 @@ object BuildHelper {
         |Useful sbt tasks:
         |${item("build")} - Prepares sources, compiles and runs tests.
         |${item(
-         "prepare"
-       )} - Prepares sources by applying both scalafix and scalafmt
+      "prepare"
+    )} - Prepares sources by applying both scalafix and scalafmt
         |${item("fix")} - Fixes sources files using scalafix
         |${item("fmt")} - Formats source files using scalafmt
         |${item("~compileJVM")} - Compiles all JVM modules (file-watch enabled)
         |${item("testJVM")} - Runs all JVM tests
         |${item(
-         "testOnly *.YourSpec -- -t \"YourLabel\""
-       )} - Only runs tests with matching term e.g.
+      "testOnly *.YourSpec -- -t \"YourLabel\""
+    )} - Only runs tests with matching term e.g.
         |${subItem("coreTestsJVM/testOnly *.ZIOSpec -- -t \"happy-path\"")}
         |${item("docs/docusaurusCreateSite")} - Generates the ZIO microsite
       """.stripMargin

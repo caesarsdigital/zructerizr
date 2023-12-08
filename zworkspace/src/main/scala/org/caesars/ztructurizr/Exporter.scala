@@ -11,5 +11,4 @@ sealed trait Exporter {
     }
 }
 
-final case class PlantUMLExporter(exporter: StructurizrPlantUMLExporter)
-    extends Exporter
+final case class PlantUMLExporter(exporter: StructurizrPlantUMLExporter) extends Exporter

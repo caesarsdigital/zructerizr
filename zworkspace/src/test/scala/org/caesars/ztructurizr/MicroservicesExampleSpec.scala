@@ -38,8 +38,8 @@ object MicroservicesExampleSpec extends ZIOSpecDefault {
   // below follows a port of the above Java Code to use ZWorkspace
 
   val MICROSERVICE_TAG = "Microservice"
-  val MESSAGE_BUS_TAG = "Message Bus"
-  val DATASTORE_TAG = "Database"
+  val MESSAGE_BUS_TAG  = "Message Bus"
+  val DATASTORE_TAG    = "Database"
 
   val workspaceLayer = ZWorkspace.makeLayer(
     "Microservices example",

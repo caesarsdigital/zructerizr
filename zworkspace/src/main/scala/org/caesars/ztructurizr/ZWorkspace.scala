@@ -41,7 +41,7 @@ final class ZWorkspace private (
           case None =>
             for {
               umlExp <- ZIO.attempt(new StructurizrPlantUMLExporter)
-              _ <- exporters.update(_.copy(plantUmlExporter = Some(umlExp)))
+              _      <- exporters.update(_.copy(plantUmlExporter = Some(umlExp)))
             } yield umlExp
         }
     }
@@ -60,8 +60,7 @@ final class ZWorkspace private (
 
   def views: UIO[ViewSet] = ZIO.succeed(workspace.getViews)
 
-  /** Creates a container view, where the scope of the view is the specified
-    * software system.
+  /** Creates a container view, where the scope of the view is the specified software system.
     *
     * @param softwareSystem
     *   the SoftwareSystem object representing the scope of the view
@@ -86,8 +85,7 @@ final class ZWorkspace private (
     )
   )
 
-  /** Creates a component view, where the scope of the view is the specified
-    * container.
+  /** Creates a component view, where the scope of the view is the specified container.
     *
     * @param container
     *   the Container object representing the scope of the view
@@ -125,11 +123,9 @@ final class ZWorkspace private (
   ): Task[DynamicView] =
     ZIO.attempt(workspace.getViews.createDynamicView(key, description))
 
-  /** Creates a dynamic view, where the scope is the specified software system.
-    * The following elements can be added to the resulting view:
+  /** Creates a dynamic view, where the scope is the specified software system. The following elements can be added to the resulting view:
     *
-    * <ul> <li>People</li> <li>Software systems</li> <li>Containers that reside
-    * inside the specified software system</li> </ul>
+    * <ul> <li>People</li> <li>Software systems</li> <li>Containers that reside inside the specified software system</li> </ul>
     *
     * @param softwareSystem
     *   the SoftwareSystem object representing the scope of the view
@@ -150,12 +146,10 @@ final class ZWorkspace private (
     workspace.getViews.createDynamicView(softwareSystem, key, description)
   )
 
-  /** Creates a dynamic view, where the scope is the specified container. The
-    * following elements can be added to the resulting view:
+  /** Creates a dynamic view, where the scope is the specified container. The following elements can be added to the resulting view:
     *
-    * <ul> <li>People</li> <li>Software systems</li> <li>Containers with the
-    * same parent software system as the specified container</li> <li>Components
-    * within the specified container</li> </ul>
+    * <ul> <li>People</li> <li>Software systems</li> <li>Containers with the same parent software system as the specified container</li>
+    * <li>Components within the specified container</li> </ul>
     *
     * @param container
     *   the Container object representing the scope of the view
@@ -181,17 +175,12 @@ final class ZWorkspace private (
 object ZWorkspace {
 
   sealed trait Exportable
-  final case class DynamicViewExportable(dynamicView: DynamicView)
-      extends Exportable
-  final case class ComponentExportable(componentView: ComponentView)
-      extends Exportable
-  final case class ContainerExportable(containerView: ContainerView)
-      extends Exportable
-  final case class CustomExportable(customView: CustomView) extends Exportable
-  final case class DeploymentExportable(deploymentView: DeploymentView)
-      extends Exportable
-  final case class SystemContextExportable(systemContextView: SystemContextView)
-      extends Exportable
+  final case class DynamicViewExportable(dynamicView: DynamicView)               extends Exportable
+  final case class ComponentExportable(componentView: ComponentView)             extends Exportable
+  final case class ContainerExportable(containerView: ContainerView)             extends Exportable
+  final case class CustomExportable(customView: CustomView)                      extends Exportable
+  final case class DeploymentExportable(deploymentView: DeploymentView)          extends Exportable
+  final case class SystemContextExportable(systemContextView: SystemContextView) extends Exportable
   final case class SystmeLandscapeExportable(
       systemLandscapeView: SystemLandscapeView
   ) extends Exportable
@@ -208,7 +197,7 @@ object ZWorkspace {
       exportable: Exportable
   ): RIO[ZWorkspace, Diagram] = for {
     zworkspace <- ZIO.service[ZWorkspace]
-    exporter <- zworkspace.getExporter(exporterType)
+    exporter   <- zworkspace.getExporter(exporterType)
     diagram <- exportable match {
       case DynamicViewExportable(dynamicView) =>
         ZIO.attempt(exporter.export(dynamicView))
@@ -230,8 +219,7 @@ object ZWorkspace {
   /** @param exportable
     * @param exporterType
     * @param animationStep
-    *   Note that animationStep is ignored for CustomView, SystemContextView,
-    *   and SystemLandscapeView.
+    *   Note that animationStep is ignored for CustomView, SystemContextView, and SystemLandscapeView.
     * @return
     */
   def export(
@@ -240,7 +228,7 @@ object ZWorkspace {
       animationStep: Int
   ): RIO[ZWorkspace, Diagram] = for {
     zworkspace <- ZIO.service[ZWorkspace]
-    exporter <- zworkspace.getExporter(exporterType)
+    exporter   <- zworkspace.getExporter(exporterType)
     diagram <- exportable match {
       case DynamicViewExportable(dynamicView) =>
         ZIO.attempt(exporter.export(dynamicView, animationStep.toString))
@@ -263,7 +251,7 @@ object ZWorkspace {
       exporterType: ExporterType
   ): RIO[ZWorkspace, List[Diagram]] = for {
     zworkspace <- ZIO.service[ZWorkspace]
-    exporter <- zworkspace.getExporter(exporterType)
+    exporter   <- zworkspace.getExporter(exporterType)
     diagrams <- ZIO
       .attempt(exporter.export(zworkspace.workspace))
       .map(CollectionHasAsScala(_).asScala.toList)
@@ -284,7 +272,7 @@ object ZWorkspace {
     defn <- diagramDefinition(diagram)
     fileExt = Option(diagram.getFileExtension).getOrElse("txt")
     _ <- defn match {
-      case Some(defn) => writeFile(s"${baseFileName}.${fileExt}", defn)
+      case Some(defn) => writeFile(s"$baseFileName.$fileExt", defn)
       case None =>
         ZIO.fail(
           new Exception(
@@ -301,7 +289,7 @@ object ZWorkspace {
     defn <- diagramDefinition(diagram)
     fileExt = Option(diagram.getFileExtension).getOrElse("txt")
     _ <- defn match {
-      case Some(defn) => writeFile(s"${baseFileName}.${fileExt}", defn)
+      case Some(defn) => writeFile(s"$baseFileName.$fileExt", defn)
       case None =>
         ZIO.fail(
           new Exception(
@@ -326,19 +314,19 @@ object ZWorkspace {
     *   Task[ZWorkspace]
     */
   private def unsafeZWorkspace(workspace: Workspace): Task[ZWorkspace] = for {
-    sem <- Semaphore.make(1)
-    semRef <- Ref.make(sem)
+    sem          <- Semaphore.make(1)
+    semRef       <- Ref.make(sem)
     exportersRef <- Ref.make(Exporters.empty)
   } yield new ZWorkspace(workspace, semRef, exportersRef)
 
   def apply(name: String, description: Description): Task[ZWorkspace] = for {
-    workspace <- ZIO.attempt(new Workspace(name, description))
+    workspace  <- ZIO.attempt(new Workspace(name, description))
     zworkspace <- ZWorkspace.unsafeZWorkspace(workspace)
   } yield zworkspace
 
   def apply(workspaceFile: File): Task[ZWorkspace] = for {
     dslParser <- ZIO.succeed(new StructurizrDslParser)
-    _ <- ZIO.attempt(dslParser.parse(workspaceFile))
+    _         <- ZIO.attempt(dslParser.parse(workspaceFile))
     workspace = dslParser.getWorkspace()
     zworkspace <- ZWorkspace.unsafeZWorkspace(workspace)
   } yield zworkspace
@@ -367,8 +355,7 @@ object ZWorkspace {
     softwareSystem.addContainer(name, description, technology)
   )
 
-  implicit class ZSoftwareSystem(val softwareSystem: SoftwareSystem)
-      extends AnyVal {
+  implicit class ZSoftwareSystem(val softwareSystem: SoftwareSystem) extends AnyVal {
     def addContainerZ(
         name: String,
         description: Description,
@@ -422,10 +409,8 @@ object ZWorkspace {
   }
 
   sealed trait RelationshipViewable
-  final case class StaticViewable(element: StaticStructureElement)
-      extends RelationshipViewable
-  final case class CustomViewable(element: CustomElement)
-      extends RelationshipViewable
+  final case class StaticViewable(element: StaticStructureElement) extends RelationshipViewable
+  final case class CustomViewable(element: CustomElement)          extends RelationshipViewable
 
   implicit def staticViewableToStaticStructureElement(
       viewable: StaticViewable
@@ -466,23 +451,22 @@ object ZWorkspace {
   ): RIO[ZWorkspace, Unit] = {
     val semTask = (for {
       _ <- ZIO.attempt(view.startParallelSequence())
-      _ <- ZIO.foreach(relationships) {
-        case (source, destination, description, technology) =>
-          addRelationshipView(
-            view,
-            source,
-            description,
-            technology,
-            destination
-          )
+      _ <- ZIO.foreach(relationships) { case (source, destination, description, technology) =>
+        addRelationshipView(
+          view,
+          source,
+          description,
+          technology,
+          destination
+        )
       }
       _ <- ZIO.attempt(view.endParallelSequence())
     } yield ()).uninterruptible
 
     for {
       zworkspace <- ZIO.service[ZWorkspace]
-      sem <- zworkspace.parallelSequenceSem.get
-      _ <- sem.withPermit(semTask)
+      sem        <- zworkspace.parallelSequenceSem.get
+      _          <- sem.withPermit(semTask)
     } yield ()
   }
 
@@ -508,16 +492,14 @@ object ZWorkspace {
       ZWorkspace.addParallelSequence(view, relationships)
   }
 
-  /** Adds a unidirectional "uses" style relationship between the source element
-    * and the specified destination element.
+  /** Adds a unidirectional "uses" style relationship between the source element and the specified destination element.
     *
     * @param source
     *   the source of the relationship
     * @param destination
     *   the target of the relationship
     * @param description
-    *   a description of the relationship (e.g. "uses", "gets data from", "sends
-    *   data to")
+    *   a description of the relationship (e.g. "uses", "gets data from", "sends data to")
     * @param technology
     *   the technology details (e.g. JSON/HTTPS)
     * @param interactionStyle
@@ -546,14 +528,12 @@ object ZWorkspace {
     )
   )
 
-  /** Adds a unidirectional "uses" style relationship between this element and
-    * the specified element.
+  /** Adds a unidirectional "uses" style relationship between this element and the specified element.
     *
     * @param destination
     *   the target of the relationship
     * @param description
-    *   a description of the relationship (e.g. "uses", "gets data from", "sends
-    *   data to")
+    *   a description of the relationship (e.g. "uses", "gets data from", "sends data to")
     * @param technology
     *   the technology details (e.g. JSON/HTTPS)
     * @param interactionStyle
@@ -563,8 +543,7 @@ object ZWorkspace {
     * @return
     *   the relationship that has just been created and added to the model
     */
-  implicit class ZStaticStructureElement(val element: StaticStructureElement)
-      extends AnyVal {
+  implicit class ZStaticStructureElement(val element: StaticStructureElement) extends AnyVal {
     def uzez(
         destination: StaticStructureElement,
         description: Description = Description(""),
@@ -594,7 +573,7 @@ object ZWorkspace {
       pathIn: String,
       content: String
   ): IO[IOException, Path] = for {
-    path <- ZIO.attempt(Paths.get(pathIn)).refineToOrDie[IOException]
+    path    <- ZIO.attempt(Paths.get(pathIn)).refineToOrDie[IOException]
     pathOut <- writeFile(path, content)
   } yield pathOut
 

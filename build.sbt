@@ -19,7 +19,7 @@ lazy val root = project
   )
 inThisBuild(
   List(
-    organization := "com.caesars",
+    organization     := "com.caesars",
     organizationName := "Caesars Digital",
     licenses := List(
       "MPL-2.0" -> url("https://www.mozilla.org/en-US/MPL/2.0/")

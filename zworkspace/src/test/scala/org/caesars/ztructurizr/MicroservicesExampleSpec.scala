@@ -1,12 +1,10 @@
 package org.caesars.ztructurizr
 
-import org.caesars.ztructurizr.ZWorkspace.*
-
 import com.structurizr.model.InteractionStyle
-
+import org.caesars.ztructurizr.ZWorkspace.*
 import zio.*
-import zio.test.*
 import zio.test.Assertion.*
+import zio.test.*
 
 /*
         // TODO:
@@ -206,7 +204,7 @@ object MicroservicesExampleSpec extends ZIOSpecDefault {
         )
       )
     )
-    diagrams <- ZWorkspace.exportWorkspace(PlantUML)
+    diagrams <- ZWorkspace.diagramWorkspace(PlantUML)
     diagramsWithPaths = diagrams.zipWithIndex.map { case (diagram, index) =>
       val path = s"figures/microservices-example-$index"
       (diagram, path)

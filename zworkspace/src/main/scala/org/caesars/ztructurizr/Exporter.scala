@@ -1,7 +1,7 @@
 package org.caesars.ztructurizr
 
-import com.structurizr.export.plantuml.StructurizrPlantUMLExporter
 import com.structurizr.export.AbstractDiagramExporter
+import com.structurizr.export.plantuml.StructurizrPlantUMLExporter
 
 sealed trait Exporter {
   def exporter: AbstractDiagramExporter

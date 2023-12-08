@@ -1,14 +1,15 @@
 package org.caesars.ztructurizr
 
-import com.structurizr.export.plantuml.StructurizrPlantUMLExporter
 import com.structurizr.export.AbstractDiagramExporter
-
+import com.structurizr.export.plantuml.StructurizrPlantUMLExporter
 final case class Exporters(
     plantUmlExporter: Option[StructurizrPlantUMLExporter]
 ) {
 
   def getExporter(exporterType: ExporterType): Option[AbstractDiagramExporter] =
-    plantUmlExporter
+    exporterType match {
+      case PlantUML => plantUmlExporter
+    }
 
 }
 

@@ -1,23 +1,18 @@
 package org.caesars.ztructurizr
 
-import com.structurizr.Workspace;
-// import com.structurizr.api.StructurizrClient;
-import com.structurizr.dsl.StructurizrDslParser;
-import com.structurizr.model._;
-import com.structurizr.export.plantuml.StructurizrPlantUMLExporter
-import com.structurizr.view._;
-
-import java.io.File
-import scala.jdk.CollectionConverters.CollectionHasAsScala
-
-import zio._
-import com.structurizr.export.Diagram
-import com.structurizr.export.plantuml.PlantUMLDiagram
-import java.io.IOException
+import java.io.{File, IOException}
 import java.nio.charset.StandardCharsets
-import java.nio.file.Paths
-import java.nio.file.Files
-import java.nio.file.Path
+import java.nio.file.{Files, Path, Paths}
+import scala.jdk.CollectionConverters.CollectionHasAsScala
+import scala.language.implicitConversions
+
+import com.structurizr.Workspace
+import com.structurizr.dsl.StructurizrDslParser
+import com.structurizr.export.Diagram
+import com.structurizr.export.plantuml.{PlantUMLDiagram, StructurizrPlantUMLExporter}
+import com.structurizr.model._
+import com.structurizr.view._
+import zio._
 
 /** Some useful but Java-oriented references:
   * https://github.com/structurizr/examples/blob/main/java/src/main/java/com/structurizr/example/MicroservicesExample.java
@@ -192,7 +187,7 @@ object ZWorkspace {
       exportable: ContainerExportable
   ): ContainerView = exportable.containerView
 
-  def export(
+  def diagram(
       exporterType: ExporterType,
       exportable: Exportable
   ): RIO[ZWorkspace, Diagram] = for {
@@ -222,7 +217,7 @@ object ZWorkspace {
     *   Note that animationStep is ignored for CustomView, SystemContextView, and SystemLandscapeView.
     * @return
     */
-  def export(
+  def diagram(
       exporterType: ExporterType,
       exportable: Exportable,
       animationStep: Int
@@ -247,7 +242,7 @@ object ZWorkspace {
     }
   } yield diagram
 
-  def exportWorkspace(
+  def diagramWorkspace(
       exporterType: ExporterType
   ): RIO[ZWorkspace, List[Diagram]] = for {
     zworkspace <- ZIO.service[ZWorkspace]
@@ -337,7 +332,7 @@ object ZWorkspace {
     * @return
     *   TaskLayer[ZWorkspace]
     */
-  private def makeLayerUnsafe(workspace: Workspace): TaskLayer[ZWorkspace] =
+  def makeLayerUnsafe(workspace: Workspace): TaskLayer[ZWorkspace] =
     ZLayer.fromZIO(ZWorkspace.unsafeZWorkspace(workspace))
 
   def makeLayer(name: String, description: Description): TaskLayer[ZWorkspace] =

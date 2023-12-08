@@ -1,5 +1,7 @@
 package org.caesars.ztructurizr
 
+import scala.language.implicitConversions
+
 class Description(val description: String) extends AnyVal
 
 object Description {

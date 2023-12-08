@@ -8,7 +8,7 @@ with the Structurizr DSL in ZIO applications.
 
 See the tests for examples of how to use the library.
 
-You can run the examples from sbt with `test:runMain org.caesars.ztructurizr.ExampleRunner`.
+You can run the examples from sbt with `zworkspace/test:runMain org.caesars.ztructurizr.ExampleRunner`.
 
 ## Related Projects
 

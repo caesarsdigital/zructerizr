@@ -1,17 +1,12 @@
 package org.caesars.ztructurizr
 
-import org.caesars.ztructurizr.ZWorkspace._
+import org.caesars.ztructurizr.ZWorkspace.*
 
 import com.structurizr.model.InteractionStyle
-import com.structurizr.model.Tags
-import com.structurizr.view.Styles
-import com.structurizr.view.ViewSet
-import com.structurizr.view.ContainerView
-import com.structurizr.view.DynamicView
 
-import zio._
-import zio.test._
-import zio.test.Assertion._
+import zio.*
+import zio.test.*
+import zio.test.Assertion.*
 
 /*
         // TODO:
@@ -222,7 +217,7 @@ object MicroservicesExampleSpec extends ZIOSpecDefault {
 
   } yield ()
 
-  def spec = suite("MySpec")(test("my test") {
+  def spec: Spec[Any, Throwable] = suite("MySpec")(test("my test") {
     for {
       _ <- microservicesExample
       _ <- ZIO.succeed(println("DEBUG: done"))

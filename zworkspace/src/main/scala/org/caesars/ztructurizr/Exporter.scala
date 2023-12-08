@@ -5,9 +5,10 @@ import com.structurizr.export.AbstractDiagramExporter
 
 sealed trait Exporter {
   def exporter: AbstractDiagramExporter
-  def exporterType(wrappedExporter: Exporter): ExporterType = exporter match {
-    case _: StructurizrPlantUMLExporter => PlantUML
-  }
+  def exporterType(wrappedExporter: Exporter): ExporterType =
+    wrappedExporter match {
+      case _: PlantUMLExporter => PlantUML
+    }
 }
 
 final case class PlantUMLExporter(exporter: StructurizrPlantUMLExporter)

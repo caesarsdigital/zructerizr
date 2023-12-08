@@ -317,7 +317,7 @@ object BuildHelper {
         |${item("fix")} - Fixes sources files using scalafix
         |${item("fmt")} - Formats source files using scalafmt
         |${item("~compileJVM")} - Compiles all JVM modules (file-watch enabled)
-        |${item("testJVM")} - Runs all JVM tests
+        |${item("test")} - Runs all JVM tests
         |${item(
       "testOnly *.YourSpec -- -t \"YourLabel\""
     )} - Only runs tests with matching term e.g.

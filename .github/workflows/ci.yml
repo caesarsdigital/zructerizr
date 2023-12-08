@@ -65,8 +65,8 @@ jobs:
         if: ${{ !startsWith(matrix.scala, '3.2.') }}
         run: sbt ++${{ matrix.scala }}! test${{ matrix.platform }}
       - name: Run dotty tests
-        if: ${{ startsWith(matrix.scala, '3.2.') && matrix.platform == 'JVM' }}
-        run: sbt ++${{ matrix.scala }}! testJVM
+        if: ${{ startsWith(matrix.scala, '3.3.') && matrix.platform == 'JVM' }}
+        run: sbt ++${{ matrix.scala }}! test
 
   ci:
     runs-on: ubuntu-20.04

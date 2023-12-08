@@ -8,8 +8,8 @@ import scala.language.implicitConversions
 
 import com.structurizr.Workspace
 import com.structurizr.dsl.StructurizrDslParser
-import com.structurizr.export.Diagram
-import com.structurizr.export.plantuml.{PlantUMLDiagram, StructurizrPlantUMLExporter}
+import com.structurizr.`export`.Diagram
+import com.structurizr.`export`.plantuml.{PlantUMLDiagram, StructurizrPlantUMLExporter}
 import com.structurizr.model._
 import com.structurizr.view._
 import zio._
@@ -195,19 +195,19 @@ object ZWorkspace {
     exporter   <- zworkspace.getExporter(exporterType)
     diagram <- exportable match {
       case DynamicViewExportable(dynamicView) =>
-        ZIO.attempt(exporter.export(dynamicView))
+        ZIO.attempt(exporter.`export`(dynamicView))
       case ComponentExportable(componentView) =>
-        ZIO.attempt(exporter.export(componentView))
+        ZIO.attempt(exporter.`export`(componentView))
       case ContainerExportable(containerView) =>
-        ZIO.attempt(exporter.export(containerView))
+        ZIO.attempt(exporter.`export`(containerView))
       case CustomExportable(customView) =>
-        ZIO.attempt(exporter.export(customView))
+        ZIO.attempt(exporter.`export`(customView))
       case DeploymentExportable(deploymentView) =>
-        ZIO.attempt(exporter.export(deploymentView))
+        ZIO.attempt(exporter.`export`(deploymentView))
       case SystemContextExportable(systemContextView) =>
-        ZIO.attempt(exporter.export(systemContextView))
+        ZIO.attempt(exporter.`export`(systemContextView))
       case SystmeLandscapeExportable(systemLandscapeView) =>
-        ZIO.attempt(exporter.export(systemLandscapeView))
+        ZIO.attempt(exporter.`export`(systemLandscapeView))
     }
   } yield diagram
 
@@ -226,19 +226,19 @@ object ZWorkspace {
     exporter   <- zworkspace.getExporter(exporterType)
     diagram <- exportable match {
       case DynamicViewExportable(dynamicView) =>
-        ZIO.attempt(exporter.export(dynamicView, animationStep.toString))
+        ZIO.attempt(exporter.`export`(dynamicView, animationStep.toString))
       case ComponentExportable(componentView) =>
-        ZIO.attempt(exporter.export(componentView, animationStep))
+        ZIO.attempt(exporter.`export`(componentView, animationStep))
       case ContainerExportable(containerView) =>
-        ZIO.attempt(exporter.export(containerView, animationStep))
+        ZIO.attempt(exporter.`export`(containerView, animationStep))
       case CustomExportable(customView) =>
-        ZIO.attempt(exporter.export(customView /*, animationStep */ ))
+        ZIO.attempt(exporter.`export`(customView /*, animationStep */ ))
       case DeploymentExportable(deploymentView) =>
-        ZIO.attempt(exporter.export(deploymentView, animationStep))
+        ZIO.attempt(exporter.`export`(deploymentView, animationStep))
       case SystemContextExportable(systemContextView) =>
-        ZIO.attempt(exporter.export(systemContextView /*, animationStep */ ))
+        ZIO.attempt(exporter.`export`(systemContextView /*, animationStep */ ))
       case SystmeLandscapeExportable(systemLandscapeView) =>
-        ZIO.attempt(exporter.export(systemLandscapeView /*, animationStep */ ))
+        ZIO.attempt(exporter.`export`(systemLandscapeView /*, animationStep */ ))
     }
   } yield diagram
 
@@ -248,7 +248,7 @@ object ZWorkspace {
     zworkspace <- ZIO.service[ZWorkspace]
     exporter   <- zworkspace.getExporter(exporterType)
     diagrams <- ZIO
-      .attempt(exporter.export(zworkspace.workspace))
+      .attempt(exporter.`export`(zworkspace.workspace))
       .map(CollectionHasAsScala(_).asScala.toList)
   } yield diagrams
 

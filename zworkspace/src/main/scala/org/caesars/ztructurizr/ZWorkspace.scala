@@ -572,12 +572,12 @@ object ZWorkspace {
     pathOut <- writeFile(path, content)
   } yield pathOut
 
-  implicit class DescriptionStringOps(val value: String) {
+  implicit class DescriptionStringOps(val value: String) extends AnyVal {
     def description: Description = Description(value)
-  } extends AnyVal
+  }
 
-  implicit class TechnologyStringOps(val value: String) {
+  implicit class TechnologyStringOps(val value: String) extends AnyVal {
     def technology: Technology = Technology(value)
-  } extends AnyVal
+  }
 
 }

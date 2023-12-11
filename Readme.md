@@ -3,6 +3,16 @@
 A batteries-included (though currently incomplete) library for working
 with the Structurizr DSL in ZIO applications.
 
+## Getting it
+
+```
+    resolvers += "jitpack" at "https://jitpack.io"
+```
+
+```
+	libraryDependencies += "com.github.caesarsdigital.ztructurizr" %% "ztrucurizer-zworkspace" % "0.1.0"
+
+```
 
 ## Examples
 

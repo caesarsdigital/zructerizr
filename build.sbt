@@ -1,18 +1,9 @@
 import BuildHelper._
 import Dependencies._
 
-/*
-lazy val root = (project in file("."))
-  .settings(
-    name := "ztructurizr",
-    crossScalaVersions := Versions.crossScalaVersions,
-    libraryDependencies ++= Seq(zio, zioTest) ++ structurizrDependencies
-  )
- */
-
 lazy val root = project
   .in(file("."))
-  .settings(publish / skip := true)
+  .settings(publish / skip := true, resolvers += "jitpack" at "https://jitpack.io")
   .aggregate(
     zworkspace
     // docs

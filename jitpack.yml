@@ -1,0 +1,8 @@
+before_install:
+  - source ~/.sdkman/bin/sdkman-init.sh
+  - sdk update
+  - sdk install java 17.0.9-graal
+  - sdk use java 17.0.9-graal
+install:
+  - sbt -v +clean
+  - sbt -v +publishM2

@@ -46,6 +46,10 @@ object MicroservicesExampleSpec extends ZIOSpecDefault {
 
   val microservicesExample: RIO[ZWorkspace, Unit] = for {
     workspace <- ZIO.service[ZWorkspace]
+    _ <- workspace.createSystemLandscapeViewUnique(
+      "SystemLandscape",
+      "The system landscape diagram for Customer Information System.".description
+    )
     mySoftwareSystem <- workspace.addSoftwareSystem(
       "Customer Information System",
       "Stores information".description

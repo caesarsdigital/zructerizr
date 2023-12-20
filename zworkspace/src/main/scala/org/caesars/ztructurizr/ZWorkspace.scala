@@ -18,10 +18,13 @@ import zio._
   * https://github.com/structurizr/examples/blob/main/java/src/main/java/com/structurizr/example/MicroservicesExample.java
   * https://youtu.be/4HEd1EEQLR0?feature=shared&t=2988
   */
+
+final case class ZtructurizrException(message: String) extends Exception(message)
 final class ZWorkspace private (
     private val workspace: Workspace,
     val parallelSequenceSem: Ref[Semaphore],
-    val exporters: Ref[Exporters]
+    val exporters: Ref[Exporters],
+    val systemLandscapeView: Ref[Option[SystemLandscapeView]],
 ) {
 
   def getExporter(
@@ -165,6 +168,52 @@ final class ZWorkspace private (
     workspace.getViews.createDynamicView(container, key, description)
   )
 
+  /** Represents a System Landscape view that sits "above" the C4 model, showing the software systems and people in a given environment. In
+    * most cases, likely only one of these views would be needed, and you should <b>prefer to use createSystemLandscapeViewUniquex</b>.
+    * @param key
+    *   the key for the view (must be unique)
+    * @param description
+    *   a description of the view
+    * @return
+    */
+  def createSystemLandscapeView(
+      key: String,
+      description: Description = Description("")
+  ): Task[SystemLandscapeView] = ZIO.attempt(
+    workspace.getViews.createSystemLandscapeView(key, description)
+  )
+
+  /** Represents a System Landscape view that sits "above" the C4 model, showing the software systems and people in a given environment.
+    * Returns a unique view, or fails with a ZtructurizrException if the unique view already exists. Adds all software systems and all
+    * people to this view. In the event you want mulitple System Landscape views, use createSystemLandscapeView instead.
+    * @param key
+    *   the key for the view (must be unique)
+    * @param description
+    *   a description of the view
+    * @return
+    */
+  def createSystemLandscapeViewUnique(
+      key: String,
+      description: Description = Description("")
+  ): Task[SystemLandscapeView] = for {
+    existingSystemLandscapeViewOpt <- systemLandscapeView.get
+    sysLandscapeView <- existingSystemLandscapeViewOpt match {
+      case Some(existingSystemLandscapeView) =>
+        ZIO.fail(
+          ZtructurizrException(
+            s"Unique System Landscape View already exists with key: ${existingSystemLandscapeView.getKey}"
+              + s" can't create another with key: $key."
+          )
+        )
+      case None =>
+        for {
+          sysLView <- createSystemLandscapeView(key, description)
+          _        <- ZIO.attempt(sysLView.addAllElements())
+          _        <- systemLandscapeView.set(Some(sysLView))
+        } yield sysLView
+    }
+  } yield sysLandscapeView
+
 }
 
 object ZWorkspace {
@@ -176,7 +225,7 @@ object ZWorkspace {
   final case class CustomExportable(customView: CustomView)                      extends Exportable
   final case class DeploymentExportable(deploymentView: DeploymentView)          extends Exportable
   final case class SystemContextExportable(systemContextView: SystemContextView) extends Exportable
-  final case class SystmeLandscapeExportable(
+  final case class SystemLandscapeExportable(
       systemLandscapeView: SystemLandscapeView
   ) extends Exportable
 
@@ -206,7 +255,7 @@ object ZWorkspace {
         ZIO.attempt(exporter.`export`(deploymentView))
       case SystemContextExportable(systemContextView) =>
         ZIO.attempt(exporter.`export`(systemContextView))
-      case SystmeLandscapeExportable(systemLandscapeView) =>
+      case SystemLandscapeExportable(systemLandscapeView) =>
         ZIO.attempt(exporter.`export`(systemLandscapeView))
     }
   } yield diagram
@@ -237,7 +286,7 @@ object ZWorkspace {
         ZIO.attempt(exporter.`export`(deploymentView, animationStep))
       case SystemContextExportable(systemContextView) =>
         ZIO.attempt(exporter.`export`(systemContextView /*, animationStep */ ))
-      case SystmeLandscapeExportable(systemLandscapeView) =>
+      case SystemLandscapeExportable(systemLandscapeView) =>
         ZIO.attempt(exporter.`export`(systemLandscapeView /*, animationStep */ ))
     }
   } yield diagram
@@ -245,8 +294,13 @@ object ZWorkspace {
   def diagramWorkspace(
       exporterType: ExporterType
   ): RIO[ZWorkspace, List[Diagram]] = for {
-    zworkspace <- ZIO.service[ZWorkspace]
-    exporter   <- zworkspace.getExporter(exporterType)
+    zworkspace             <- ZIO.service[ZWorkspace]
+    systemLandscapeViewOpt <- zworkspace.systemLandscapeView.get
+    _ <- systemLandscapeViewOpt match {
+      case Some(sysLandscapeView) => ZIO.attempt(sysLandscapeView.addAllElements())
+      case None                   => ZIO.unit
+    }
+    exporter <- zworkspace.getExporter(exporterType)
     diagrams <- ZIO
       .attempt(exporter.`export`(zworkspace.workspace))
       .map(CollectionHasAsScala(_).asScala.toList)
@@ -260,6 +314,12 @@ object ZWorkspace {
     case _ => ZIO.succeed(None)
   }
 
+  /** Saves a diagram to a file. Fails with a ZtructurizrException if we can't get the definition from the diagram.
+    *
+    * @param diagram
+    * @param baseFileName
+    * @return
+    */
   def saveToFile(
       diagram: Diagram,
       baseFileName: Path
@@ -270,7 +330,7 @@ object ZWorkspace {
       case Some(defn) => writeFile(s"$baseFileName.$fileExt", defn)
       case None =>
         ZIO.fail(
-          new Exception(
+          ZtructurizrException(
             s"No definition when writing to $baseFileName.$fileExt"
           )
         )
@@ -309,10 +369,11 @@ object ZWorkspace {
     *   Task[ZWorkspace]
     */
   private def unsafeZWorkspace(workspace: Workspace): Task[ZWorkspace] = for {
-    sem          <- Semaphore.make(1)
-    semRef       <- Ref.make(sem)
-    exportersRef <- Ref.make(Exporters.empty)
-  } yield new ZWorkspace(workspace, semRef, exportersRef)
+    sem                 <- Semaphore.make(1)
+    semRef              <- Ref.make(sem)
+    exportersRef        <- Ref.make(Exporters.empty)
+    systemLandscapeView <- Ref.make(Option.empty[SystemLandscapeView])
+  } yield new ZWorkspace(workspace, semRef, exportersRef, systemLandscapeView)
 
   def apply(name: String, description: Description): Task[ZWorkspace] = for {
     workspace  <- ZIO.attempt(new Workspace(name, description))

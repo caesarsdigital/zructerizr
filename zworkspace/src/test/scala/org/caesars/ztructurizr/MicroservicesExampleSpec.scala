@@ -1,11 +1,12 @@
 package org.caesars.ztructurizr
 
+import java.nio.file.{Files, Paths}
+
 import com.structurizr.model.InteractionStyle
 import org.caesars.ztructurizr.ZWorkspace.*
 import zio.*
 import zio.test.Assertion.*
 import zio.test.*
-import java.nio.file.{Paths, Files}
 
 /*
         // TODO:

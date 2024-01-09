@@ -23,6 +23,7 @@ final case class ZtructurizrException(message: String) extends Exception(message
 final class ZWorkspace private (
     private val workspace: Workspace,
     val parallelSequenceSem: Ref[Semaphore],
+    val modelSem: Ref[Semaphore],
     val exporters: Ref[Exporters],
     val systemLandscapeView: Ref[Option[SystemLandscapeView]],
 ) {
@@ -48,13 +49,18 @@ final class ZWorkspace private (
   def addPerson(
       name: String,
       description: Description
-  ): Task[Person] = ZIO.attempt(workspace.getModel.addPerson(name, description))
+  ): Task[Person] = for {
+    sem    <- modelSem.get
+    person <- sem.withPermit(ZIO.attempt(workspace.getModel.addPerson(name, description)))
+  } yield person
 
   def addSoftwareSystem(
       name: String,
       description: Description
-  ): Task[SoftwareSystem] =
-    ZIO.attempt(workspace.getModel.addSoftwareSystem(name, description))
+  ): Task[SoftwareSystem] = for {
+    sem            <- modelSem.get
+    softwareSystem <- sem.withPermit(ZIO.attempt(workspace.getModel.addSoftwareSystem(name, description)))
+  } yield softwareSystem
 
   def views: UIO[ViewSet] = ZIO.succeed(workspace.getViews)
 
@@ -75,13 +81,18 @@ final class ZWorkspace private (
       softwareSystem: SoftwareSystem,
       key: String,
       description: Description
-  ): Task[ContainerView] = ZIO.attempt(
-    workspace.getViews.createContainerView(
-      softwareSystem,
-      key,
-      description
+  ): Task[ContainerView] = for {
+    sem <- modelSem.get
+    containerView <- sem.withPermit(
+      ZIO.attempt(
+        workspace.getViews.createContainerView(
+          softwareSystem,
+          key,
+          description
+        )
+      )
     )
-  )
+  } yield containerView
 
   /** Creates a component view, where the scope of the view is the specified container.
     *
@@ -100,9 +111,14 @@ final class ZWorkspace private (
       container: Container,
       key: String,
       description: Description = Description("")
-  ): Task[ComponentView] = ZIO.attempt(
-    workspace.getViews.createComponentView(container, key, description)
-  )
+  ): Task[ComponentView] = for {
+    sem <- modelSem.get
+    componentView <- sem.withPermit(
+      ZIO.attempt(
+        workspace.getViews.createComponentView(container, key, description)
+      )
+    )
+  } yield componentView
 
   /** Creates a dynamic view.
     *
@@ -118,8 +134,12 @@ final class ZWorkspace private (
   def createDynamicView(
       key: String,
       description: Description = Description("")
-  ): Task[DynamicView] =
-    ZIO.attempt(workspace.getViews.createDynamicView(key, description))
+  ): Task[DynamicView] = for {
+    sem <- modelSem.get
+    dynamicView <- sem.withPermit(
+      ZIO.attempt(workspace.getViews.createDynamicView(key, description))
+    )
+  } yield dynamicView
 
   /** Creates a dynamic view, where the scope is the specified software system. The following elements can be added to the resulting view:
     *
@@ -140,9 +160,14 @@ final class ZWorkspace private (
       softwareSystem: SoftwareSystem,
       key: String,
       description: Description = Description("")
-  ): Task[DynamicView] = ZIO.attempt(
-    workspace.getViews.createDynamicView(softwareSystem, key, description)
-  )
+  ): Task[DynamicView] = for {
+    sem <- modelSem.get
+    dynamicView <- sem.withPermit(
+      ZIO.attempt(
+        workspace.getViews.createDynamicView(softwareSystem, key, description)
+      )
+    )
+  } yield dynamicView
 
   /** Creates a dynamic view, where the scope is the specified container. The following elements can be added to the resulting view:
     *
@@ -164,9 +189,14 @@ final class ZWorkspace private (
       container: Container,
       key: String,
       description: Description = Description("")
-  ): Task[DynamicView] = ZIO.attempt(
-    workspace.getViews.createDynamicView(container, key, description)
-  )
+  ): Task[DynamicView] = for {
+    sem <- modelSem.get
+    dynamicView <- sem.withPermit(
+      ZIO.attempt(
+        workspace.getViews.createDynamicView(container, key, description)
+      )
+    )
+  } yield dynamicView
 
   /** Represents a System Landscape view that sits "above" the C4 model, showing the software systems and people in a given environment. In
     * most cases, likely only one of these views would be needed, and you should <b>prefer to use createSystemLandscapeViewUniquex</b>.
@@ -179,9 +209,12 @@ final class ZWorkspace private (
   def createSystemLandscapeView(
       key: String,
       description: Description = Description("")
-  ): Task[SystemLandscapeView] = ZIO.attempt(
-    workspace.getViews.createSystemLandscapeView(key, description)
-  )
+  ): Task[SystemLandscapeView] = for {
+    sem <- modelSem.get
+    systemLandscapeView <- sem.withPermit(
+      ZIO.attempt(workspace.getViews.createSystemLandscapeView(key, description))
+    )
+  } yield systemLandscapeView
 
   /** Represents a System Landscape view that sits "above" the C4 model, showing the software systems and people in a given environment.
     * Returns a unique view, or fails with a ZtructurizrException if the unique view already exists. Adds all software systems and all
@@ -195,25 +228,25 @@ final class ZWorkspace private (
   def createSystemLandscapeViewUnique(
       key: String,
       description: Description = Description("")
-  ): Task[SystemLandscapeView] = for {
-    existingSystemLandscapeViewOpt <- systemLandscapeView.get
-    sysLandscapeView <- existingSystemLandscapeViewOpt match {
-      case Some(existingSystemLandscapeView) =>
-        ZIO.fail(
-          ZtructurizrException(
-            s"Unique System Landscape View already exists with key: ${existingSystemLandscapeView.getKey}"
-              + s" can't create another with key: $key."
+  ): Task[SystemLandscapeView] =
+    for {
+      existingSystemLandscapeViewOpt <- systemLandscapeView.get
+      sysLandscapeView <- existingSystemLandscapeViewOpt match {
+        case Some(existingSystemLandscapeView) =>
+          ZIO.fail(
+            ZtructurizrException(
+              s"Unique System Landscape View already exists with key: ${existingSystemLandscapeView.getKey}"
+                + s" can't create another with key: $key."
+            )
           )
-        )
-      case None =>
-        for {
-          sysLView <- createSystemLandscapeView(key, description)
-          _        <- ZIO.attempt(sysLView.addAllElements())
-          _        <- systemLandscapeView.set(Some(sysLView))
-        } yield sysLView
-    }
-  } yield sysLandscapeView
-
+        case None =>
+          for {
+            sysLView <- createSystemLandscapeView(key, description)
+            _        <- ZIO.attempt(sysLView.addAllElements())
+            _        <- systemLandscapeView.set(Some(sysLView))
+          } yield sysLView
+      }
+    } yield sysLandscapeView
 }
 
 object ZWorkspace {
@@ -239,26 +272,34 @@ object ZWorkspace {
   def diagram(
       exporterType: ExporterType,
       exportable: Exportable
-  ): RIO[ZWorkspace, Diagram] = for {
-    zworkspace <- ZIO.service[ZWorkspace]
-    exporter   <- zworkspace.getExporter(exporterType)
-    diagram <- exportable match {
-      case DynamicViewExportable(dynamicView) =>
-        ZIO.attempt(exporter.`export`(dynamicView))
-      case ComponentExportable(componentView) =>
-        ZIO.attempt(exporter.`export`(componentView))
-      case ContainerExportable(containerView) =>
-        ZIO.attempt(exporter.`export`(containerView))
-      case CustomExportable(customView) =>
-        ZIO.attempt(exporter.`export`(customView))
-      case DeploymentExportable(deploymentView) =>
-        ZIO.attempt(exporter.`export`(deploymentView))
-      case SystemContextExportable(systemContextView) =>
-        ZIO.attempt(exporter.`export`(systemContextView))
-      case SystemLandscapeExportable(systemLandscapeView) =>
-        ZIO.attempt(exporter.`export`(systemLandscapeView))
-    }
-  } yield diagram
+  ): RIO[ZWorkspace, Diagram] = {
+    val semTask = for {
+      zworkspace <- ZIO.service[ZWorkspace]
+      exporter   <- zworkspace.getExporter(exporterType)
+      diagram <- exportable match {
+        case DynamicViewExportable(dynamicView) =>
+          ZIO.attempt(exporter.`export`(dynamicView))
+        case ComponentExportable(componentView) =>
+          ZIO.attempt(exporter.`export`(componentView))
+        case ContainerExportable(containerView) =>
+          ZIO.attempt(exporter.`export`(containerView))
+        case CustomExportable(customView) =>
+          ZIO.attempt(exporter.`export`(customView))
+        case DeploymentExportable(deploymentView) =>
+          ZIO.attempt(exporter.`export`(deploymentView))
+        case SystemContextExportable(systemContextView) =>
+          ZIO.attempt(exporter.`export`(systemContextView))
+        case SystemLandscapeExportable(systemLandscapeView) =>
+          ZIO.attempt(exporter.`export`(systemLandscapeView))
+      }
+    } yield diagram
+
+    for {
+      zworkspace <- ZIO.service[ZWorkspace]
+      sem        <- zworkspace.modelSem.get
+      diagram    <- sem.withPermit(semTask)
+    } yield diagram
+  }
 
   /** @param exportable
     * @param exporterType
@@ -270,41 +311,58 @@ object ZWorkspace {
       exporterType: ExporterType,
       exportable: Exportable,
       animationStep: Int
-  ): RIO[ZWorkspace, Diagram] = for {
-    zworkspace <- ZIO.service[ZWorkspace]
-    exporter   <- zworkspace.getExporter(exporterType)
-    diagram <- exportable match {
-      case DynamicViewExportable(dynamicView) =>
-        ZIO.attempt(exporter.`export`(dynamicView, animationStep.toString))
-      case ComponentExportable(componentView) =>
-        ZIO.attempt(exporter.`export`(componentView, animationStep))
-      case ContainerExportable(containerView) =>
-        ZIO.attempt(exporter.`export`(containerView, animationStep))
-      case CustomExportable(customView) =>
-        ZIO.attempt(exporter.`export`(customView /*, animationStep */ ))
-      case DeploymentExportable(deploymentView) =>
-        ZIO.attempt(exporter.`export`(deploymentView, animationStep))
-      case SystemContextExportable(systemContextView) =>
-        ZIO.attempt(exporter.`export`(systemContextView /*, animationStep */ ))
-      case SystemLandscapeExportable(systemLandscapeView) =>
-        ZIO.attempt(exporter.`export`(systemLandscapeView /*, animationStep */ ))
-    }
-  } yield diagram
+  ): RIO[ZWorkspace, Diagram] = {
+    val semTask = for {
+      zworkspace <- ZIO.service[ZWorkspace]
+      exporter   <- zworkspace.getExporter(exporterType)
+      diagram <- exportable match {
+        case DynamicViewExportable(dynamicView) =>
+          ZIO.attempt(exporter.`export`(dynamicView, animationStep.toString))
+        case ComponentExportable(componentView) =>
+          ZIO.attempt(exporter.`export`(componentView, animationStep))
+        case ContainerExportable(containerView) =>
+          ZIO.attempt(exporter.`export`(containerView, animationStep))
+        case CustomExportable(customView) =>
+          ZIO.attempt(exporter.`export`(customView /*, animationStep */ ))
+        case DeploymentExportable(deploymentView) =>
+          ZIO.attempt(exporter.`export`(deploymentView, animationStep))
+        case SystemContextExportable(systemContextView) =>
+          ZIO.attempt(exporter.`export`(systemContextView /*, animationStep */ ))
+        case SystemLandscapeExportable(systemLandscapeView) =>
+          ZIO.attempt(exporter.`export`(systemLandscapeView /*, animationStep */ ))
+      }
+    } yield diagram
+
+    for {
+      zworkspace <- ZIO.service[ZWorkspace]
+      sem        <- zworkspace.modelSem.get
+      diagram    <- sem.withPermit(semTask)
+    } yield diagram
+  }
 
   def diagramWorkspace(
       exporterType: ExporterType
-  ): RIO[ZWorkspace, List[Diagram]] = for {
-    zworkspace             <- ZIO.service[ZWorkspace]
-    systemLandscapeViewOpt <- zworkspace.systemLandscapeView.get
-    _ <- systemLandscapeViewOpt match {
-      case Some(sysLandscapeView) => ZIO.attempt(sysLandscapeView.addAllElements())
-      case None                   => ZIO.unit
-    }
-    exporter <- zworkspace.getExporter(exporterType)
-    diagrams <- ZIO
-      .attempt(exporter.`export`(zworkspace.workspace))
-      .map(CollectionHasAsScala(_).asScala.toList)
-  } yield diagrams
+  ): RIO[ZWorkspace, List[Diagram]] = {
+    val semTask = for {
+      zworkspace             <- ZIO.service[ZWorkspace]
+      systemLandscapeViewOpt <- zworkspace.systemLandscapeView.get
+      _ <- systemLandscapeViewOpt match {
+        case Some(sysLandscapeView) => ZIO.attempt(sysLandscapeView.addAllElements())
+        case None                   => ZIO.unit
+      }
+      exporter <- zworkspace.getExporter(exporterType)
+      diagrams <- ZIO
+        .attempt(exporter.`export`(zworkspace.workspace))
+        .map(CollectionHasAsScala(_).asScala.toList)
+    } yield diagrams
+
+    for {
+      zworkspace <- ZIO.service[ZWorkspace]
+      sem        <- zworkspace.modelSem.get
+      diagrams   <- sem.withPermit(semTask)
+    } yield diagrams
+
+  }
 
   def diagramDefinition(
       diagram: Diagram
@@ -369,11 +427,13 @@ object ZWorkspace {
     *   Task[ZWorkspace]
     */
   private def unsafeZWorkspace(workspace: Workspace): Task[ZWorkspace] = for {
-    sem                 <- Semaphore.make(1)
-    semRef              <- Ref.make(sem)
+    modelSem            <- Semaphore.make(1)
+    parallelSequenceSem <- Semaphore.make(1)
+    parSeqSemRef        <- Ref.make(modelSem)
+    modelSemRef         <- Ref.make(parallelSequenceSem)
     exportersRef        <- Ref.make(Exporters.empty)
     systemLandscapeView <- Ref.make(Option.empty[SystemLandscapeView])
-  } yield new ZWorkspace(workspace, semRef, exportersRef, systemLandscapeView)
+  } yield new ZWorkspace(workspace, parSeqSemRef, modelSemRef, exportersRef, systemLandscapeView)
 
   def apply(name: String, description: Description): Task[ZWorkspace] = for {
     workspace  <- ZIO.attempt(new Workspace(name, description))
@@ -407,16 +467,18 @@ object ZWorkspace {
       name: String,
       description: Description,
       technology: Technology
-  ): Task[Container] = ZIO.attempt(
-    softwareSystem.addContainer(name, description, technology)
-  )
+  ): RIO[ZWorkspace, Container] = for {
+    zworkspace <- ZIO.service[ZWorkspace]
+    sem        <- zworkspace.modelSem.get
+    container  <- sem.withPermit(ZIO.attempt(softwareSystem.addContainer(name, description, technology)))
+  } yield container
 
   implicit class ZSoftwareSystem(val softwareSystem: SoftwareSystem) extends AnyVal {
     def addContainerZ(
         name: String,
         description: Description,
         technology: Technology
-    ): Task[Container] = ZWorkspace.addContainerZ(
+    ): RIO[ZWorkspace, Container] = ZWorkspace.addContainerZ(
       softwareSystem,
       name,
       description,
@@ -430,16 +492,18 @@ object ZWorkspace {
       name: String,
       description: Description,
       technology: Technology
-  ): Task[Component] = ZIO.attempt(
-    container.addComponent(name, description, technology)
-  )
+  ): RIO[ZWorkspace, Component] = for {
+    zworkspace <- ZIO.service[ZWorkspace]
+    sem        <- zworkspace.modelSem.get
+    component  <- sem.withPermit(ZIO.attempt(container.addComponent(name, description, technology)))
+  } yield component
 
   implicit class ZContainer(val container: Container) extends AnyVal {
     def addComponentZ(
         name: String,
         description: Description,
         technology: Technology
-    ): Task[Component] = ZWorkspace.addComponentZ(
+    ): RIO[ZWorkspace, Component] = ZWorkspace.addComponentZ(
       container,
       name,
       description,
@@ -450,18 +514,26 @@ object ZWorkspace {
   implicit class ZContainerView(val view: ContainerView) extends AnyVal {
     def viewFunction[T](
         fn: ContainerView => T
-    ): Task[T] = ZIO.attempt(fn(view))
+    ): RIO[ZWorkspace, T] = for {
+      zworkspace <- ZIO.service[ZWorkspace]
+      sem        <- zworkspace.modelSem.get
+      result     <- sem.withPermit(ZIO.attempt(fn(view)))
+    } yield result
   }
 
   def addTagz(
       element: Element,
       tags: String*
-  ): Task[Unit] = ZIO.attempt(element.addTags(tags: _*))
+  ): RIO[ZWorkspace, Unit] = for {
+    zworkspace <- ZIO.service[ZWorkspace]
+    sem        <- zworkspace.modelSem.get
+    _          <- sem.withPermit(ZIO.attempt(element.addTags(tags: _*)))
+  } yield ()
 
   implicit class ZElement(val element: Element) extends AnyVal {
     def addTagz(
         tags: String*
-    ): Task[Unit] = ZWorkspace.addTagz(element, tags: _*)
+    ): RIO[ZWorkspace, Unit] = ZWorkspace.addTagz(element, tags: _*)
   }
 
   sealed trait RelationshipViewable
@@ -487,8 +559,8 @@ object ZWorkspace {
       description: Description,
       technology: Technology,
       destination: RelationshipViewable
-  ): Task[RelationshipView] =
-    (source, destination) match {
+  ): RIO[ZWorkspace, RelationshipView] = {
+    val semTask = (source, destination) match {
       case (StaticViewable(source), StaticViewable(destination)) =>
         ZIO.attempt(view.add(source, description, technology, destination))
       case (CustomViewable(source), CustomViewable(destination)) =>
@@ -498,6 +570,13 @@ object ZWorkspace {
       case (CustomViewable(source), StaticViewable(destination)) =>
         ZIO.attempt(view.add(source, description, technology, destination))
     }
+    for {
+      zworkspace <- ZIO.service[ZWorkspace]
+      sem        <- zworkspace.modelSem.get
+      relView    <- sem.withPermit(semTask)
+    } yield relView
+
+  }
 
   def addParallelSequence(
       view: DynamicView,
@@ -532,7 +611,7 @@ object ZWorkspace {
         description: Description,
         technology: Technology,
         destination: RelationshipViewable
-    ): Task[RelationshipView] = ZWorkspace.addRelationshipView(
+    ): RIO[ZWorkspace, RelationshipView] = ZWorkspace.addRelationshipView(
       view,
       source,
       description,
@@ -572,17 +651,23 @@ object ZWorkspace {
       technology: Technology = Technology(""),
       interactionStyle: Option[InteractionStyle] = None,
       tags: Seq[String] = Seq.empty[String]
-  ): Task[Option[Relationship]] = ZIO.attempt(
-    Option(
-      source.uses(
-        destination,
-        description,
-        technology,
-        interactionStyle.orNull,
-        tags.toArray
+  ): RIO[ZWorkspace, Option[Relationship]] = for {
+    zworkspace <- ZIO.service[ZWorkspace]
+    sem        <- zworkspace.modelSem.get
+    relOpt <- sem.withPermit(
+      ZIO.attempt(
+        Option(
+          source.uses(
+            destination,
+            description,
+            technology,
+            interactionStyle.orNull,
+            tags.toArray
+          )
+        )
       )
     )
-  )
+  } yield relOpt
 
   /** Adds a unidirectional "uses" style relationship between this element and the specified element.
     *
@@ -606,7 +691,7 @@ object ZWorkspace {
         technology: Technology = Technology(""),
         interactionStyle: Option[InteractionStyle] = None,
         tags: Seq[String] = Seq.empty[String]
-    ): Task[Option[Relationship]] = ZWorkspace.uzez(
+    ): RIO[ZWorkspace, Option[Relationship]] = ZWorkspace.uzez(
       element,
       destination,
       description,

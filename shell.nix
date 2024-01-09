@@ -5,18 +5,21 @@ let
   stablepkgs = import (builtins.fetchTarball {
     url = "https://github.com/NixOS/nixpkgs/archive/${nixpkgsVersion}.tar.gz";
   }) {};
+  jdk = stablepkgs.jdk17;
 in
 
   mkShell {
     buildInputs = [
       stablepkgs.coursier
-      stablepkgs.jdk17_headless  # or another version of JDK
+      jdk
+      graphviz # just for visualizing PlantUML
     ];
 
     shellHook = ''
-      export JAVA_HOME=${stablepkgs.jdk17_headless}
+      export JAVA_HOME=${jdk}
       export PATH="$PATH:$HOME/.local/share/coursier/bin"
       cs install sbt metals
+      sbt bloopInstall
     '';
   }
 

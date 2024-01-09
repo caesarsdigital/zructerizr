@@ -5,6 +5,7 @@ import org.caesars.ztructurizr.ZWorkspace.*
 import zio.*
 import zio.test.Assertion.*
 import zio.test.*
+import java.nio.file.{Paths, Files}
 
 /*
         // TODO:
@@ -32,6 +33,7 @@ import zio.test.*
   * https://github.com/structurizr/examples/blob/cde555599f86a6fa8ac99934402cbf431f16d3c8/java/src/main/java/com/structurizr/example/MicroservicesExample.java
   */
 object MicroservicesExampleSpec extends ZIOSpecDefault {
+  val figureDir = "figures"
 
   // below follows a port of the above Java Code to use ZWorkspace
 
@@ -45,11 +47,13 @@ object MicroservicesExampleSpec extends ZIOSpecDefault {
   )
 
   val microservicesExample: RIO[ZWorkspace, Unit] = for {
+
     workspace <- ZIO.service[ZWorkspace]
     _ <- workspace.createSystemLandscapeViewUnique(
       "SystemLandscape",
       "The system landscape diagram for Customer Information System.".description
     )
+
     mySoftwareSystem <- workspace.addSoftwareSystem(
       "Customer Information System",
       "Stores information".description
@@ -208,9 +212,10 @@ object MicroservicesExampleSpec extends ZIOSpecDefault {
         )
       )
     )
+    _        <- ZIO.attempt(Files.createDirectories(Paths.get(figureDir)))
     diagrams <- ZWorkspace.diagramWorkspace(PlantUML)
     diagramsWithPaths = diagrams.zipWithIndex.map { case (diagram, index) =>
-      val path = s"figures/microservices-example-$index"
+      val path = s"$figureDir/microservices-example-$index"
       (diagram, path)
     }
     _ <- ZIO.foreach(diagramsWithPaths) { case (diagram, path) =>

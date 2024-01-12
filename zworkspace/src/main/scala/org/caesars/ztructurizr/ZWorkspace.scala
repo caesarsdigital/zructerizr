@@ -5,6 +5,7 @@ import java.nio.charset.StandardCharsets
 import java.nio.file.{Files, Path, Paths}
 import scala.jdk.CollectionConverters.CollectionHasAsScala
 import scala.language.implicitConversions
+import scala.reflect.{ClassTag, classTag}
 
 import com.structurizr.Workspace
 import com.structurizr.dsl.StructurizrDslParser
@@ -13,6 +14,7 @@ import com.structurizr.`export`.plantuml.{PlantUMLDiagram, StructurizrPlantUMLEx
 import com.structurizr.model._
 import com.structurizr.view._
 import zio._
+import zio.stream.ZStream
 
 /** Some useful but Java-oriented references:
   * https://github.com/structurizr/examples/blob/main/java/src/main/java/com/structurizr/example/MicroservicesExample.java
@@ -521,6 +523,16 @@ object ZWorkspace {
     } yield result
   }
 
+  implicit class ZComponentView(val view: ComponentView) extends AnyVal {
+    def viewFunction[T](
+        fn: ComponentView => T
+    ): RIO[ZWorkspace, T] = for {
+      zworkspace <- ZIO.service[ZWorkspace]
+      sem        <- zworkspace.modelSem.get
+      result     <- sem.withPermit(ZIO.attempt(fn(view)))
+    } yield result
+  }
+
   def addTagz(
       element: Element,
       tags: String*
@@ -725,5 +737,66 @@ object ZWorkspace {
   implicit class TechnologyStringOps(val value: String) extends AnyVal {
     def technology: Technology = Technology(value)
   }
+
+  /* *** [Begin] Utility functions for documenting code *** */
+
+  def getCallingFunctionName(nesting: Int = 0): String = {
+    val stackTrace  = Thread.currentThread().getStackTrace
+    val methodLevel = 2 + nesting
+    // Assuming the calling function is the third element in the stack trace.
+    // The first element is getStackTrace, the second is this function itself.
+    if (stackTrace.length > methodLevel) {
+      val className  = stackTrace(methodLevel).getClassName
+      val methodName = stackTrace(methodLevel).getMethodName
+      s"$className.$methodName"
+    } else {
+      "Unknown"
+    }
+  }
+
+  def unimplemented[E, A]: IO[E, A] = {
+    val callingFunctionName = getCallingFunctionName(1)
+    ZIO.fail(new Exception(s"Unimplemented function $callingFunctionName").asInstanceOf[E])
+  }
+
+  def unimplementedZStream[E, A]: ZStream[Any, E, A] = {
+    val callingFunctionName = getCallingFunctionName(1)
+    ZStream.fail(new Exception(s"Unimplemented function $callingFunctionName").asInstanceOf[E])
+  }
+
+  def makeMethodMap[C: ClassTag]: Map[String, String] =
+    classTag[C].runtimeClass
+      .getDeclaredMethods()
+      .filterNot(method => java.lang.reflect.Modifier.isStatic(method.getModifiers))
+      .map(method => (method.getName, ""))
+      .toMap
+
+  def formatMethodDocs(methodDocMap: Map[String, String]): String = {
+
+    val (emptyDocMapUnfiltered, nonEmptyDocMap) = methodDocMap.partition { case (_, doc) =>
+      doc.isEmpty
+    }
+    val emptyDocMap = emptyDocMapUnfiltered.filter { case (methodName, _) =>
+      !((methodName == "unapply") || (methodName == "equals")
+        || (methodName == "apply") || (methodName == "toString")
+        || (methodName == "canEqual") || (methodName == "productElementName")
+        || (methodName == "productIterator") || (methodName == "hashCode")
+        || (methodName == "productElement") || (methodName == "productElementNames")
+        || (methodName == "productPrefix") || (methodName == "parent")
+        || (methodName == "bonusWorkspace") || (methodName == "component")
+        || (methodName == "productArity") || (methodName == "copy")
+        || methodName.contains("copy$"))
+    }
+    val nonEmptyDocString = nonEmptyDocMap
+      .map { case (methodName, methodDoc) =>
+        s"$methodName: $methodDoc"
+      }
+      .mkString("\n")
+    val emptyDocString = emptyDocMap.keys.mkString(", ")
+
+    nonEmptyDocString + "\n" + emptyDocString
+  }
+
+  /* *** [End] Utility functions for documenting code *** */
 
 }

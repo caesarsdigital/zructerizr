@@ -42,7 +42,7 @@ lazy val zworkspace = (project in file("zworkspace"))
   .settings(buildInfoSettings("ztrucurizer.zworkspace"))
   .settings(
     crossScalaVersions := Versions.crossScalaVersions,
-    libraryDependencies ++= Seq(zio, zioTest) ++ structurizrDependencies
+    libraryDependencies ++= Seq(zio, zioStreams, zioTest) ++ structurizrDependencies
   )
   .settings(testFrameworks += new TestFramework("zio.test.sbt.ZTestFramework"))
   .enablePlugins(BuildInfoPlugin)

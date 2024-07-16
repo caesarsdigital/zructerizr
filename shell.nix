@@ -1,18 +1,21 @@
 with import <nixpkgs> { };
 let
-  nixpkgsVersion = "nixos-23.11"; 
 
+  nixpkgsVersion = "24.05";
   stablepkgs = import (builtins.fetchTarball {
     url = "https://github.com/NixOS/nixpkgs/archive/${nixpkgsVersion}.tar.gz";
   }) {};
-  jdk = stablepkgs.jdk17;
+  # We need unstable to track the frequent updates to metals that tend to
+  # break compatibility with prior bloop versions
+  unstable = import (fetchTarball "https://github.com/NixOS/nixpkgs/archive/nixos-unstable.tar.gz") {};
 in
 
   mkShell {
     buildInputs = [
       stablepkgs.coursier
-      jdk
-      graphviz # just for visualizing PlantUML
+      stablepkgs.jdk
+      stablepkgs.graphviz # just for visualizing PlantUML
+      unstable.bloop 
     ];
 
     shellHook = ''

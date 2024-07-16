@@ -3,7 +3,13 @@ import Dependencies._
 
 lazy val root = project
   .in(file("."))
-  .settings(publish / skip := true, resolvers += "jitpack" at "https://jitpack.io")
+  .settings(
+    publish / skip := true,
+    resolvers += "jitpack" at "https://jitpack.io",
+    crossScalaVersions := Versions.crossScalaVersions,
+    crossPaths := true,
+    publish / crossTarget := target.value / "cross-publish"
+    )
   .aggregate(
     zworkspace
     // docs

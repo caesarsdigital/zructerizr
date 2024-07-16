@@ -30,7 +30,6 @@ object BuildHelper {
       .asScala
     list.map(v => (v.split('.').take(2).mkString("."), v)).toMap
   }
-  val SilencerVersion = "1.7.14"
 
   private val stdOptions = Seq(
     "-deprecation",
@@ -224,13 +223,13 @@ object BuildHelper {
     libraryDependencies ++= {
       if (scalaVersion.value == Versions.scala3)
         Seq(
-          "com.github.ghik" % s"silencer-lib_${Versions.scala2}" % SilencerVersion % Provided
+          "com.github.ghik" % s"silencer-lib_${Versions.scala2}" % Versions.silencer % Provided
         )
       else
         Seq(
-          "com.github.ghik" % "silencer-lib" % SilencerVersion % Provided cross CrossVersion.full,
+          "com.github.ghik" % "silencer-lib" % Versions.silencer % Provided cross CrossVersion.full,
           compilerPlugin(
-            "com.github.ghik" % "silencer-plugin" % SilencerVersion cross CrossVersion.full
+            "com.github.ghik" % "silencer-plugin" % Versions.silencer cross CrossVersion.full
           )
         )
     },
@@ -238,12 +237,8 @@ object BuildHelper {
     semanticdbOptions += "-P:semanticdb:synthetics:on",
     semanticdbVersion := scalafixSemanticdb.revision, // use Scalafix compatible version
 
-    ThisBuild / scalafixScalaBinaryVersion := CrossVersion.binaryScalaVersion(
-      scalaVersion.value
-    ),
     ThisBuild / scalafixDependencies ++= List(
-      "com.github.liancheng" %% "organize-imports" % "0.5.0",
-      "com.github.vovapolu"  %% "scaluzzi"         % "0.1.18"
+      "com.github.vovapolu" %% "scaluzzi" % "0.1.18"
     ),
     Test / parallelExecution := true,
     incOptions ~= (_.withLogRecompileOnMacro(false)),

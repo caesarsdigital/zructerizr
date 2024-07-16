@@ -2,10 +2,12 @@ import sbt._
 
 object Dependencies {
   object Versions {
-    val scala2             = "2.13.12"
-    val scala3             = "3.3.1"
+    val scala2             = "2.13.14"
+    val scala3             = "3.3.3"
     val crossScalaVersions = Seq(scala2, scala3)
-    val zio                = "2.0.19"
+
+    val silencer = "1.7.17"
+    val zio      = "2.1.6"
   }
 
   val zio        = "dev.zio" %% "zio"          % Versions.zio

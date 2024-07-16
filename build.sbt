@@ -7,9 +7,8 @@ lazy val root = project
     publish / skip := true,
     resolvers += "jitpack" at "https://jitpack.io",
     crossScalaVersions := Versions.crossScalaVersions,
-    crossPaths := true,
-    publish / crossTarget := target.value / "cross-publish"
-    )
+    crossPaths         := true,
+  )
   .aggregate(
     zworkspace
     // docs
@@ -32,14 +31,14 @@ inThisBuild(
   )
 )
 
-addCommandAlias("fmt", "all scalafmtSbt scalafmt test:scalafmt")
+addCommandAlias("fmt", "; root / scalafmtSbt; root / scalafmt; Test / scalafmt")
 addCommandAlias(
   "fix",
-  "; all compile:scalafix test:scalafix; all scalafmtSbt scalafmtAll"
+  "; root / scalafix; Test / scalafix; root / scalafmtSbt; root / scalafmtAll"
 )
 addCommandAlias(
   "check",
-  "; scalafmtSbtCheck; scalafmtCheckAll; compile:scalafix --check; test:scalafix --check"
+  "; root / scalafmtSbtCheck; root / scalafmtCheckAll; root / scalafix --check; Test / scalafix --check"
 )
 
 lazy val zworkspace = (project in file("zworkspace"))

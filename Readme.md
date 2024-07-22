@@ -10,8 +10,7 @@ with the Structurizr DSL in ZIO applications.
 ```
 
 ```
-	libraryDependencies += "com.github.caesarsdigital.ztructurizr" %% "ztrucurizer-zworkspace" % "0.1.0"
-
+	libraryDependencies += "com.github.caesarsdigital.ztructurizr" %% "ztructurizr-zworkspace" % "0.4.2"
 ```
 
 ## Examples

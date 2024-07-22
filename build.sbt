@@ -42,9 +42,9 @@ addCommandAlias(
 )
 
 lazy val zworkspace = (project in file("zworkspace"))
-  .settings(stdSettings("ztrucurizer-zworkspace"))
+  .settings(stdSettings("ztructurizr-zworkspace"))
   // .settings(crossProjectSettings)
-  .settings(buildInfoSettings("ztrucurizer.zworkspace"))
+  .settings(buildInfoSettings("ztructurizr.zworkspace"))
   .settings(
     crossScalaVersions := Versions.crossScalaVersions,
     libraryDependencies ++= Seq(zio, zioStreams, zioTest) ++ structurizrDependencies
